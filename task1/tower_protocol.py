@@ -1,5 +1,3 @@
-from gradysim.protocol.interface import IProtocol
-from gradysim.simulator.extension.visualization_controller import VisualizationController
 from gradysim.protocol.messages.communication import CommunicationCommand, CommunicationCommandType
 from visible_node_protocol import VisibleNodeProtocol
 import logging, constants, shared
@@ -47,4 +45,4 @@ class TowerProtocol (VisibleNodeProtocol):
                 color
             )
         self.visualization.resize_nodes(1.0)
-        shared.scheduleAppearanceTimer(self)
+        super().scheduleAppearanceTimer()

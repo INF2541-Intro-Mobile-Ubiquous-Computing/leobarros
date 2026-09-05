@@ -1,22 +1,16 @@
-from gradysim.protocol.interface import IProtocol
 from gradysim.simulator.extension.visualization_controller import VisualizationController
 from gradysim.protocol.messages.mobility import GotoCoordsMobilityCommand
 from typing import Optional
 from gradysim.protocol.position import Position
 from gradysim.protocol.messages.communication import CommunicationCommand, CommunicationCommandType
+from visible_node_protocol import VisibleNodeProtocol
 import random, logging, constants, shared
 
-class VerticalUAVProtocol (IProtocol):
-    sent: int
-    received: int
-    receivedFromLastTimerTick: int
+class VerticalUAVProtocol (VisibleNodeProtocol):
 
     def initialize(self) -> None:
-        self.sent = 0
-        self.received = 0
-        self.receivedFromLastTimerTick = constants.NO_MESSAGE_RECEIVED
-        self.visualization = VisualizationController(self)
-        shared.scheduleAppearanceTimer(self)
+        super().initialize()
+
         self.current_position: Optional[Position] = None
         shared.scheduleMobilityTimer(self)
 
@@ -39,13 +33,8 @@ class VerticalUAVProtocol (IProtocol):
     def handle_timer(self, timer):
         if timer == "appearance":
             self.setColorAndSize()
-        else: # timer == "mobility"
+        elif timer == "mobility":
             self.moveRandomlyVertically()
-
-    # Finalização do objeto
-    def finish(self):
-        logging.info(f"Mensagens: "
-            f"Enviadas={self.sent} ; Recebidas={self.received}")
 
     def forwardMessage(self, message):
         command = CommunicationCommand(
@@ -82,4 +71,4 @@ class VerticalUAVProtocol (IProtocol):
         self.visualization.resize_nodes(1.5)
         self.receivedFromLastTimerTick = constants.NO_MESSAGE_RECEIVED
         logging.info(f"Resetou {self.receivedFromLastTimerTick}")
-        shared.scheduleAppearanceTimer(self)
+        super().scheduleAppearanceTimer()

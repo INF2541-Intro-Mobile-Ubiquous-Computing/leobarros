@@ -12,7 +12,7 @@ class VisibleNodeProtocol (IProtocol):
         self.received = 0
         self.receivedFromLastTimerTick = constants.NO_MESSAGE_RECEIVED 
         self.visualization = VisualizationController(self)
-        shared.scheduleAppearanceTimer(self)
+        self.scheduleAppearanceTimer()
 
     # Recebimento de mensagens
     def handle_packet(self, message):
@@ -30,3 +30,9 @@ class VisibleNodeProtocol (IProtocol):
     def finish(self):
         logging.info(f"Mensagens: "
             f"Enviadas={self.sent} ; Recebidas={self.received}")
+
+    def scheduleAppearanceTimer(self):
+        self.provider.schedule_timer(
+            "appearance",
+            self.provider.current_time() + constants.REDRAW_INTERVAL
+        )
