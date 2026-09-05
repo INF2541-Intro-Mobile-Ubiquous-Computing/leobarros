@@ -5,7 +5,7 @@ ANSWER_RECEIVED = 2
 
 # Intervalos
 SEND_QUESTION_INTERVAL = 3 # de envio de pergunta
-MOBILITY_INTERVAL = 5 # de movimento do nó
+MOBILITY_INTERVAL = 2 # de movimento do nó
 REPAINT_INTERVAL = 1 # de pintura do nó
 
 # Cor do nó
@@ -15,4 +15,4 @@ BLUE = (0, 0, 255)
 
 # Tamanho do nó
 DEFAULT_SIZE = 1.0
-SIZE_WHEN_RECEIVING_MESSAGE = 2.0
+SIZE_WHEN_RECEIVING_MESSAGE = 1.5

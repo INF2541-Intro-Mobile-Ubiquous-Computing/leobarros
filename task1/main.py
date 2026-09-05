@@ -19,17 +19,13 @@ def main():
     builder.add_node(TowerProtocol, (0, -50, 0))
     
     builder.add_node(HorizontalUAVProtocol, (50, -20, 0))
-    # builder.add_node(HorizontalUAVProtocol, (-50, -20, 0))
+    #builder.add_node(HorizontalUAVProtocol, (-50, -20, 0))
 
-    builder.add_node(VerticalUAVProtocol, (-30, -20, 0))
-    # builder.add_node(VerticalUAVProtocol, (30, -20, 0))
+    #builder.add_node(VerticalUAVProtocol, (-30, -20, 0))
+    #builder.add_node(VerticalUAVProtocol, (30, -20, 0))
 
-    # builder.add_node(HorizontalUAVProtocol, (50, 50, 0))
-    # builder.add_node(HorizontalUAVProtocol, (-50, 50, 0))
-
-
-
-    builder.add_handler(TimerHandler())
+    #builder.add_node(HorizontalUAVProtocol, (50, 50, 0))
+    #builder.add_node(HorizontalUAVProtocol, (-50, 50, 0))
 
     medium = CommunicationMedium(
         transmission_range=50,
@@ -38,6 +34,7 @@ def main():
     )
     builder.add_handler(CommunicationHandler(medium))
 
+    builder.add_handler(TimerHandler())
     builder.add_handler(MobilityHandler())
     builder.add_handler(VisualizationHandler())
 
