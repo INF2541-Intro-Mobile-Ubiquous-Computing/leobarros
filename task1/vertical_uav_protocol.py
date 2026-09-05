@@ -1,4 +1,3 @@
-from gradysim.simulator.extension.visualization_controller import VisualizationController
 from gradysim.protocol.messages.mobility import GotoCoordsMobilityCommand
 from typing import Optional
 from gradysim.protocol.position import Position

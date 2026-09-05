@@ -1,6 +1,6 @@
 from gradysim.protocol.interface import IProtocol
 from gradysim.simulator.extension.visualization_controller import VisualizationController
-import constants, shared, logging
+import constants, logging
 
 class VisibleNodeProtocol (IProtocol):
     sent: int
