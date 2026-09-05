@@ -2,7 +2,7 @@ from gradysim.protocol.interface import IProtocol
 from gradysim.simulator.extension.visualization_controller import VisualizationController
 import constants, logging
 
-class VisibleNodeProtocol (IProtocol):
+class NodeProtocol (IProtocol):
     sent: int
     received: int
     receivedFromLastTimerTick: int
@@ -37,15 +37,15 @@ class VisibleNodeProtocol (IProtocol):
     def scheduleAppearanceTimer(self):
         self.provider.schedule_timer(
             "appearance",
-            self.provider.current_time() + constants.REDRAW_INTERVAL
+            self.provider.current_time() + constants.REPAINT_INTERVAL
         )
 
     def setColorAndSize(self):
         #logging.debug(f"Mensagem recebida no último ciclo: {self.receivedFromLastCycle}")
-        if self.receivedFromLastTimerTick == constants.MESSAGE_RECEIVED_FROM_DRONE:
+        if self.receivedFromLastTimerTick == constants.ANSWER_RECEIVED:
             self.color = constants.BLUE # Mensagem recebida de drone
             self.size = constants.SIZE_WHEN_RECEIVING_MESSAGE
-        if self.receivedFromLastTimerTick == constants.MESSAGE_RECEIVED_FROM_TOWER:
+        if self.receivedFromLastTimerTick == constants.QUESTION_RECEIVED:
             self.color = constants.RED # Vermelho, mensagem da torre
             self.size = constants.SIZE_WHEN_RECEIVING_MESSAGE
         self.visualization.paint_node(

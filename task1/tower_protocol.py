@@ -1,8 +1,8 @@
 from gradysim.protocol.messages.communication import CommunicationCommand, CommunicationCommandType
-from visible_node_protocol import VisibleNodeProtocol
-import logging, constants, shared
+from node_protocol import NodeProtocol
+import logging, constants
 
-class TowerProtocol (VisibleNodeProtocol):
+class TowerProtocol (NodeProtocol):
 
     # Inicialização
     def initialize(self):
@@ -20,15 +20,14 @@ class TowerProtocol (VisibleNodeProtocol):
 
     # Tick dos relógios
     def handle_timer(self, timer):
-        super().handle_timer() 
+        super().handle_timer(timer) 
         if timer == "communication":
             self.sendQuestion()
 
     def sendQuestion(self):
-        command = CommunicationCommand(
-                CommunicationCommandType.BROADCAST,
-                message="[PERGUNTA] Quem vai ganhar a eleição para presidente?"
-            )
+        command = CommunicationCommand(CommunicationCommandType.BROADCAST, 
+            message="[PERGUNTA] Quem vai ganhar a eleição para presidente?"
+        )
         self.provider.send_communication_command(command)
         self.sent += 1
         logging.info("Torre enviou pergunta")

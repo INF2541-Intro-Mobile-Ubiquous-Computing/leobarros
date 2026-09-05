@@ -2,10 +2,10 @@ from gradysim.protocol.messages.mobility import GotoCoordsMobilityCommand
 from typing import Optional
 from gradysim.protocol.position import Position
 from gradysim.protocol.messages.communication import CommunicationCommand, CommunicationCommandType
-from visible_node_protocol import VisibleNodeProtocol
+from node_protocol import NodeProtocol
 import random, logging, constants, shared
 
-class VerticalUAVProtocol (VisibleNodeProtocol):
+class VerticalUAVProtocol (NodeProtocol):
 
     def initialize(self) -> None:
         super().initialize()
