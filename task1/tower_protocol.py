@@ -30,7 +30,7 @@ class TowerProtocol (NodeProtocol):
         )
         self.provider.send_communication_command(command)
         self.sent += 1
-        logging.info("Torre enviou pergunta")
+        # logging.info("Torre enviou pergunta")
         self.scheduleSendQuestionTimer()
 
     def scheduleSendQuestionTimer(self):

@@ -12,7 +12,7 @@ from gradysim.simulator.handler.visualization import VisualizationHandler
 def main():
     print("Setup")
     config = SimulationConfiguration(
-        duration=10,
+        duration=20,
         real_time=5.0
     )
     builder = SimulationBuilder(config)
