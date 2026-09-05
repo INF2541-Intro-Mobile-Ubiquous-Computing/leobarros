@@ -2,12 +2,9 @@ from gradysim.protocol.interface import IProtocol
 from gradysim.simulator.extension.visualization_controller import VisualizationController
 from gradysim.protocol.messages.communication import CommunicationCommand, CommunicationCommandType
 import logging
+import constants
 
 class TowerProtocol (IProtocol):
-    SEND_QUESTION_INTERVAL = 3
-    NO_MESSAGE_RECEIVED = 0
-    MESSAGE_RECEIVED_FROM_DRONE = 2
-
     sent: int
     received: int
     receivedFromLastCycle: int
@@ -16,14 +13,14 @@ class TowerProtocol (IProtocol):
     def initialize(self) -> None:
         self.sent = 0
         self.received = 0
-        self.receivedFromLastCycle = self.NO_MESSAGE_RECEIVED 
+        self.receivedFromLastCycle = constants.NO_MESSAGE_RECEIVED 
         self.initializeAppearanceTimer()
         self.initializeCommunicationTimer()
 
     # Recebimento de mensagens
     def handle_packet(self, message):
         self.received += 1
-        self.receivedFromLastCycle = self.MESSAGE_RECEIVED_FROM_DRONE # Obrigatoriamente a torre recebeu de um drone
+        self.receivedFromLastCycle = constants.MESSAGE_RECEIVED_FROM_DRONE # Obrigatoriamente a torre recebeu de um drone
         # logging.info(f"Mensagem recebida num.{self.received}: {message}")
     
     # Recebimento de telemetria
@@ -50,16 +47,15 @@ class TowerProtocol (IProtocol):
         self.provider.send_communication_command(command)
         self.sent += 1
             #logging.info("Torre envia mensagem")
-            # Scheduling a new timer
         self.provider.schedule_timer(
                 "communication",
-                self.provider.current_time() + self.SEND_QUESTION_INTERVAL
+                self.provider.current_time() + constants.SEND_QUESTION_INTERVAL
             )
 
     def changeColorAndSize(self):
-        color = (255, 0, 0) # Vermelho, cor da torre
+        color = constants.RED # Cor default da torre
         if self.receivedFromLastCycle > 0:
-            color = (0, 0, 255) # Azul, mensagem de drone
+            color = constants.BLUE # Mensagem recebida de drone
             self.receivedFromLastCycle = 0
         self.visualization.paint_node(
                 self.provider.get_id(),
@@ -74,7 +70,7 @@ class TowerProtocol (IProtocol):
     def initializeCommunicationTimer(self):
         self.provider.schedule_timer(
             "communication",
-            self.provider.current_time() + self.SEND_QUESTION_INTERVAL
+            self.provider.current_time() + constants.SEND_QUESTION_INTERVAL
         )
 
     def initializeAppearanceTimer(self):
