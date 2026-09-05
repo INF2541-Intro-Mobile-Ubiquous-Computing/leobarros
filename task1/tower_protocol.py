@@ -8,7 +8,7 @@ class TowerProtocol (VisibleNodeProtocol):
     def initialize(self):
         super().initialize()
         self.color = constants.RED # Cor default da torre
-        #TODO shared.scheduleSendQuestionTimer(self)
+        self.scheduleSendQuestionTimer()
 
     # Recebimento de mensagens
     def handle_packet(self, message):
@@ -19,12 +19,10 @@ class TowerProtocol (VisibleNodeProtocol):
         # self.received += 1
 
     # Tick dos relógios
-    # def handle_timer(self, timer):
-    #     if timer == "appearance":
-    #         self.setColorAndSize()
-    #         #TODO 
-        # elif timer == "communication":
-        #     self.sendQuestion()
+    def handle_timer(self, timer):
+        super().handle_timer() 
+        if timer == "communication":
+            self.sendQuestion()
 
     def sendQuestion(self):
         command = CommunicationCommand(
@@ -34,4 +32,10 @@ class TowerProtocol (VisibleNodeProtocol):
         self.provider.send_communication_command(command)
         self.sent += 1
         logging.info("Torre enviou pergunta")
-        shared.scheduleSendQuestionTimer(self)
+        self.scheduleSendQuestionTimer()
+
+    def scheduleSendQuestionTimer(self):
+        self.provider.schedule_timer(
+            "communication",
+            self.provider.current_time() + constants.SEND_QUESTION_INTERVAL
+        )
