@@ -30,7 +30,7 @@ class TowerProtocol (IProtocol):
     # Tick dos relógios
     def handle_timer(self, timer):
         if timer == "appearance":
-            self.changeColorAndSize()
+            self.setColorAndSize()
         else: # timer == "communication"
             self.sendQuestion()
 
@@ -52,7 +52,7 @@ class TowerProtocol (IProtocol):
                 self.provider.current_time() + constants.SEND_QUESTION_INTERVAL
             )
 
-    def changeColorAndSize(self):
+    def setColorAndSize(self):
         color = constants.RED # Cor default da torre
         if self.receivedFromLastCycle > 0:
             color = constants.BLUE # Mensagem recebida de drone
