@@ -12,17 +12,17 @@ from gradysim.simulator.handler.visualization import VisualizationHandler
 def main():
     print("Setup")
     config = SimulationConfiguration(
-        duration=30,
+        duration=10,
         real_time=5.0
     )
     builder = SimulationBuilder(config)
     builder.add_node(TowerProtocol, (0, -50, 0))
     
-    builder.add_node(HorizontalUAVProtocol, (50, -20, 0))
-    builder.add_node(HorizontalUAVProtocol, (-50, -20, 0))
+    # builder.add_node(HorizontalUAVProtocol, (50, -20, 0))
+    # builder.add_node(HorizontalUAVProtocol, (-50, -20, 0))
 
-    builder.add_node(VerticalUAVProtocol, (-30, -20, 0))
-    builder.add_node(VerticalUAVProtocol, (30, -20, 0))
+    # builder.add_node(VerticalUAVProtocol, (-30, -20, 0))
+    # builder.add_node(VerticalUAVProtocol, (30, -20, 0))
 
     # builder.add_node(HorizontalUAVProtocol, (50, 50, 0))
     # builder.add_node(HorizontalUAVProtocol, (-50, 50, 0))
