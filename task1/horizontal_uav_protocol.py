@@ -11,28 +11,31 @@ class HorizontalUAVProtocol (VisibleNodeProtocol):
     # Inicialização
     def initialize(self) -> None:
         super().initialize()
-        self.current_position: Optional[Position] = None
-        shared.scheduleMobilityTimer(self)
+        self.color = constants.BLACK # Cor default do drone
+        # TODO self.current_position: Optional[Position] = None
+        # shared.scheduleMobilityTimer(self)
 
     # Recebimento de mensagens
     def handle_packet(self, message):
-        self.received += 1
-        if "[PERGUNTA]" in message:
-            self.sendAnswer()
-        else:
-            self.receivedFromLastTimerTick = constants.MESSAGE_RECEIVED_FROM_DRONE
-        self.forwardMessage(message)
+        pass
+        #TODO 
+        # self.received += 1
+        # if "[PERGUNTA]" in message:
+        #     self.sendAnswer()
+        # else:
+        #     self.receivedFromLastTimerTick = constants.MESSAGE_RECEIVED_FROM_DRONE
+        # self.forwardMessage(message)
 
     # Recebimento de telemetria
     def handle_telemetry(self, telemetry):
         self.current_position = telemetry.current_position
 
     # Tick dos relógios
-    def handle_timer(self, timer):
-        if timer == "appearance":
-            self.setColorAndSize()
-        elif timer == "mobility":
-            self.moveRandomlyHorizontally()
+    # def handle_timer(self, timer):
+    #     if timer == "appearance":
+    #         self.setColorAndSize()
+        # elif timer == "mobility":
+        #     self.moveRandomlyHorizontally()
 
     def moveRandomlyHorizontally(self):
         if self.current_position is not None:
@@ -44,21 +47,6 @@ class HorizontalUAVProtocol (VisibleNodeProtocol):
             )
         self.provider.send_mobility_command(command)
         shared.scheduleMobilityTimer(self)
-
-    def setColorAndSize(self):
-        #logging.debug(f"Mensagem recebida no último ciclo: {self.receivedFromLastCycle}")
-        color = constants.BLACK # Cor default do drone
-             #if self.receivedFromLastCycle == constants.MESSAGE_RECEIVED_FROM_DRONE:
-                # color = constants.BLUE # Mensagem recebida de outro drone
-        if self.receivedFromLastTimerTick == constants.MESSAGE_RECEIVED_FROM_TOWER:
-            color = constants.RED # Vermelho, mensagem da torre
-        self.visualization.paint_node(
-                self.provider.get_id(),
-                color
-            )
-        self.receivedFromLastTimerTick = constants.NO_MESSAGE_RECEIVED
-        self.visualization.resize_nodes(1.5)
-        super().scheduleAppearanceTimer()
 
     def forwardMessage(self, message):
         command = CommunicationCommand(
