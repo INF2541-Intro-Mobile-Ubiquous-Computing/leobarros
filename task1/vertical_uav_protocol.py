@@ -10,10 +10,12 @@ from gradysim.protocol.messages.communication import CommunicationCommand, Commu
 class VerticalUAVProtocol (IProtocol):
     sent: int
     received: int
+    receivedFromLastCycle: int
 
     def initialize(self) -> None:
         self.sent = 0
         self.received = 0
+        self.receivedFromLastCycle = 0 # 0: sem mensagem; 1: torre; 2: drone
 
         self.visualization = VisualizationController(self)
         self.provider.schedule_timer(
@@ -29,17 +31,12 @@ class VerticalUAVProtocol (IProtocol):
     
     def handle_packet(self, message):
         self.received += 1
-        logging.info(f"Mensagem recebida num.{self.received}: {message}")
-        if "[TORRE]" in message:
-            self.visualization.paint_node(
-                self.provider.get_id(),
-                (255, 0, 0) # RGB vermelho
-            )
+        if "[PERGUNTA]" in message:
+            logging.info(f"Mensagem recebida num.{self.received}: {message}")
+            self.receivedFromLastCycle = 1
         else:
-            self.visualization.paint_node(
-                    self.provider.get_id(),
-                    (0, 0, 255) # RGB azul
-            )
+            self.receivedFromLastCycle = 2
+        logging.info(f"Alterou {self.receivedFromLastCycle}")
         command = CommunicationCommand(
             CommunicationCommandType.BROADCAST,
             message=f"Vertical {self.provider.get_id()}: {message}"
@@ -52,11 +49,24 @@ class VerticalUAVProtocol (IProtocol):
     
     def handle_timer(self, timer):
         if timer == "appearance":
+            color = (0, 0, 0) # Preto, drone
+            # if self.receivedFromLastCycle == 2:
+            #     color = (0, 0, 255) # Azul, mensagem de drone
+            #     self.receivedFromLastCycle = 0
+            logging.info(f"Recebido: {self.receivedFromLastCycle}")
+            if self.receivedFromLastCycle == 1:
+                color = (255, 0, 0) # Vermelho, mensagem da torre
             self.visualization.paint_node(
                 self.provider.get_id(),
-                (0, 0, 0) # RGB preto
+                color
             )
             self.visualization.resize_nodes(1.5)
+            self.receivedFromLastCycle = 0
+            logging.info(f"Resetou {self.receivedFromLastCycle}")
+            self.provider.schedule_timer(
+                "appearance",
+                self.provider.current_time() + 1
+            )
         else: # timer == "mobility"
             if self.current_position is not None:
                 x, y, z = self.current_position

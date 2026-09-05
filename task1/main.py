@@ -24,8 +24,8 @@ def main():
     builder.add_node(VerticalUAVProtocol, (-30, -20, 0))
     builder.add_node(VerticalUAVProtocol, (30, -20, 0))
 
-    builder.add_node(HorizontalUAVProtocol, (50, 50, 0))
-    builder.add_node(HorizontalUAVProtocol, (-50, 50, 0))
+    # builder.add_node(HorizontalUAVProtocol, (50, 50, 0))
+    # builder.add_node(HorizontalUAVProtocol, (-50, 50, 0))
 
 
 
@@ -33,8 +33,8 @@ def main():
 
     medium = CommunicationMedium(
         transmission_range=50,
-        delay=1,
-        failure_rate=0.5
+        delay=0.1,
+        failure_rate=0.1
     )
     builder.add_handler(CommunicationHandler(medium))
 
