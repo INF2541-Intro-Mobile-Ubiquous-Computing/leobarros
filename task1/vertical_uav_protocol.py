@@ -5,17 +5,9 @@ import random
 
 class VerticalUAVProtocol (UAVProtocol):
 
-    # def scheduleForwardMessage(self, message):
-    #     command = CommunicationCommand(
-    #         CommunicationCommandType.BROADCAST,
-    #         message=f"Vertical {self.provider.get_id()}: {message}"
-    #     )
-    #     self.provider.send_communication_command(command)
-    #     self.sent += 1
-
     def move(self):
         if self.current_position is not None:
             x, y, z = self.current_position
         command = GotoCoordsMobilityCommand(x, random.uniform(-20, 20), 0)
-     #   self.provider.send_mobility_command(command)
+        self.provider.send_mobility_command(command)
         super().scheduleMobilityTimer()
