@@ -8,10 +8,7 @@ from gradysim.simulator.handler.mobility import MobilityHandler
 from gradysim.simulator.handler.visualization import VisualizationHandler
 from final_uav_protocol import FinalUAVProtocol
 
-#logging.basicConfig(level=logging.INFO)
-
 def main():
-    print("Setup")
     config = SimulationConfiguration(
         duration=30,
         real_time=5.0

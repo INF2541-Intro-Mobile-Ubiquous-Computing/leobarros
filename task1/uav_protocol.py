@@ -36,7 +36,6 @@ class UAVProtocol (NodeProtocol):
         if isQuestion:
             self.messageReceivedType = constants.QUESTION_RECEIVED
             logging.info("Pergunta recebida")
-        #    self.scheduleAnswer()
         elif isAnswer:
             self.messageReceivedType = constants.ANSWER_RECEIVED
             logging.info("Resposta recebida")
@@ -48,7 +47,6 @@ class UAVProtocol (NodeProtocol):
         self.communicationCommands.append(command)
     
     def scheduleAnswer(self):
-        #logging.info(f"Mensagem recebida num.{self.received}: {message}")
         message = (f"[{self.level}][RESPOSTA] E eu sei lá, ué")
         self.scheduleForwardMessage(message)
 
@@ -63,10 +61,7 @@ class UAVProtocol (NodeProtocol):
             self.moveAndSendMessage()
 
     def scheduleMobilityTimer(self):
-        self.provider.schedule_timer(
-            "mobility",
-            self.provider.current_time() + constants.MOBILITY_INTERVAL
-        )
+        self.provider.schedule_timer("mobility", self.provider.current_time() + constants.MOBILITY_INTERVAL)
 
     def moveAndSendMessage(self):
         self.move()

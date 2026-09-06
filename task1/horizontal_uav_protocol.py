@@ -1,6 +1,5 @@
 from gradysim.protocol.messages.mobility import GotoCoordsMobilityCommand
 import random
-from gradysim.protocol.messages.communication import CommunicationCommand, CommunicationCommandType
 from uav_protocol import UAVProtocol
 
 class HorizontalUAVProtocol (UAVProtocol):

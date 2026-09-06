@@ -40,7 +40,6 @@ class NodeProtocol (IProtocol):
         )
 
     def setColorAndSize(self):
-        #logging.debug(f"Mensagem recebida no último ciclo: {self.receivedFromLastCycle}")
         if self.messageReceivedType == constants.ANSWER_RECEIVED:
             self.currentColor = constants.BLUE
         if self.messageReceivedType == constants.QUESTION_RECEIVED:
