@@ -6,13 +6,14 @@ from gradysim.simulator.handler.timer import TimerHandler
 from gradysim.simulator.handler.communication import CommunicationHandler, CommunicationMedium
 from gradysim.simulator.handler.mobility import MobilityHandler
 from gradysim.simulator.handler.visualization import VisualizationHandler
+from final_uav_protocol import FinalUAVProtocol
 
 #logging.basicConfig(level=logging.INFO)
 
 def main():
     print("Setup")
     config = SimulationConfiguration(
-        duration=10,
+        duration=30,
         real_time=5.0
     )
     builder = SimulationBuilder(config)
@@ -24,8 +25,8 @@ def main():
     builder.add_node(VerticalUAVProtocol, (-30, 10, 0))
     builder.add_node(VerticalUAVProtocol, (30, 10, 0))
 
-    builder.add_node(HorizontalUAVProtocol, (50, 40, 0))
-    builder.add_node(HorizontalUAVProtocol, (-50, 40, 0))
+    builder.add_node(FinalUAVProtocol, (50, 40, 0))
+    builder.add_node(FinalUAVProtocol, (-50, 40, 0))
 
     medium = CommunicationMedium(
         transmission_range=60,

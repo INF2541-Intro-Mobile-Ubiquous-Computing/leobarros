@@ -11,6 +11,21 @@ class TowerProtocol (NodeProtocol):
         self.currentColor = constants.RED
         self.scheduleSendQuestionTimer()
 
+    def handle_packet(self, message):
+        if "[RESPOSTA]" not in message:
+            return
+        closingBracket = message.find("]")
+        try:
+            senderLevel = int(message[1:closingBracket])
+        except (ValueError, IndexError):
+            logging.error(f"Resposta sem nível válido: {message}")
+            return
+        if senderLevel != 1: # A torre deve receber a resposta da camada imediatamente superior
+            return
+        self.received += 1
+        self.messageReceivedType = constants.ANSWER_RECEIVED
+        logging.info(f"Torre recebeu resposta: {message}")
+
     # Tick dos relógios
     def handle_timer(self, timer):
         super().handle_timer(timer) 
