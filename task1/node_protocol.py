@@ -6,8 +6,8 @@ class NodeProtocol (IProtocol):
     sent: int
     received: int
     messageReceivedType: int
-    defaultColor = constants.BLACK
-    currentColor = constants.BLACK
+    defaultColor = constants.UAV_COLOR
+    currentColor = constants.UAV_COLOR
 
     def initialize(self):
         self.sent = 0
@@ -41,9 +41,9 @@ class NodeProtocol (IProtocol):
 
     def setColorAndSize(self):
         if self.messageReceivedType == constants.ANSWER_RECEIVED:
-            self.currentColor = constants.BLUE
+            self.currentColor = constants.ANSWER_COLOR
         if self.messageReceivedType == constants.QUESTION_RECEIVED:
-            self.currentColor = constants.RED
+            self.currentColor = constants.QUESTION_COLOR
         self.visualization.paint_node(self.provider.get_id(), self.currentColor)
         self.visualization.resize_nodes(constants.DEFAULT_SIZE) # TODO chamar uma vez só
         self.messageReceivedType = constants.NO_MESSAGE_RECEIVED

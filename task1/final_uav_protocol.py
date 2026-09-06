@@ -19,4 +19,3 @@ class FinalUAVProtocol(HorizontalUAVProtocol):
         command = CommunicationCommand(CommunicationCommandType.BROADCAST, response)
         self.provider.send_communication_command(command) # A resposta é imediata, aproveitando a proximidade do outro drone
         self.sent += 1
-        logging.info(f"Drone final {self.provider.get_id()} respondeu: {response}")

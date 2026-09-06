@@ -7,8 +7,8 @@ class TowerProtocol (NodeProtocol):
     # Inicialização
     def initialize(self):
         super().initialize()
-        self.defaultColor = constants.RED # Cor default da torre
-        self.currentColor = constants.RED
+        self.defaultColor = constants.TOWER_COLOR # Cor default da torre
+        self.currentColor = constants.TOWER_COLOR
         self.scheduleSendQuestionTimer()
 
     def handle_packet(self, message):
@@ -24,7 +24,6 @@ class TowerProtocol (NodeProtocol):
             return
         self.received += 1
         self.messageReceivedType = constants.ANSWER_RECEIVED
-        logging.info(f"Torre recebeu resposta: {message}")
 
     # Tick dos relógios
     def handle_timer(self, timer):
@@ -38,7 +37,6 @@ class TowerProtocol (NodeProtocol):
         )
         self.provider.send_communication_command(command)
         self.sent += 1
-        logging.info("Torre enviou pergunta")
         self.scheduleSendQuestionTimer()
 
     def scheduleSendQuestionTimer(self):

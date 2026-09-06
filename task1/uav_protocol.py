@@ -10,7 +10,7 @@ class UAVProtocol (NodeProtocol):
     # Inicialização
     def initialize(self):
         super().initialize()
-        self.color = constants.BLACK # Cor default do drone
+        self.color = constants.UAV_COLOR # Cor default do drone
         self.current_position: Optional[Position] = None
         self.level = constants.NODE_LEVELS[self.provider.get_id()]
         self.communicationCommands = deque()
@@ -32,13 +32,10 @@ class UAVProtocol (NodeProtocol):
             logging.error(f"Mensagem não é pergunta nem resposta: {message}")
             return
         self.received += 1
-        logging.info(f"Mensagem: {message}")
         if isQuestion:
             self.messageReceivedType = constants.QUESTION_RECEIVED
-            logging.info("Pergunta recebida")
         elif isAnswer:
             self.messageReceivedType = constants.ANSWER_RECEIVED
-            logging.info("Resposta recebida")
         forwardedMessage = f"[{self.level}]{message}"
         self.scheduleForwardMessage(forwardedMessage)
 
@@ -69,7 +66,6 @@ class UAVProtocol (NodeProtocol):
             command = self.communicationCommands.popleft()
             self.provider.send_communication_command(command)
             self.sent += 1
-            logging.info("Drone encaminhou")
 
     def move(self):
         pass

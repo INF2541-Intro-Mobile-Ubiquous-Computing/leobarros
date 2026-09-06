@@ -9,9 +9,10 @@ MOBILITY_INTERVAL = 2 # de movimento do nó
 REPAINT_INTERVAL = 1 # de pintura do nó
 
 # Cor do nó
-BLACK = (0, 0, 0)
-RED = (255, 0, 0)
-BLUE = (0, 0, 255)
+UAV_COLOR = (60, 60, 60)
+QUESTION_COLOR = (255, 0, 0)
+ANSWER_COLOR = (0, 0, 255)
+TOWER_COLOR = (255, 100, 100)
 
 # Tamanho do nó
 DEFAULT_SIZE = 1.0
