@@ -29,6 +29,8 @@ class FinalUAVProtocol(HorizontalUAVProtocol):
             return
         if senderLevel >= self.level: # O drone final responde somente a perguntas vindas de níveis inferiores.
             return
+        if not self.isInGeocastRegion():
+            return
         self.received += 1
         self.messageReceivedType = constants.QUESTION_RECEIVED
         response = f"[{self.level}][RESPOSTA] {random.choice(ANSWERS)}"

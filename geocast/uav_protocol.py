@@ -34,6 +34,8 @@ class UAVProtocol (NodeProtocol):
         self.received += 1
         if isQuestion:
             self.messageReceivedType = constants.QUESTION_RECEIVED
+            if self.isInGeocastRegion():
+                self.scheduleAnswer()
         elif isAnswer:
             self.messageReceivedType = constants.ANSWER_RECEIVED
         forwardedMessage = f"[{self.level}]{message}"
@@ -80,3 +82,10 @@ class UAVProtocol (NodeProtocol):
             return int(message[1:closingBracket])
         except ValueError:
             return None
+
+    def isInGeocastRegion(self):
+        if self.current_position is None:
+            return False
+        x, y, z = self.current_position
+        xmin, xmax, ymin, ymax = constants.GEOCAST_REGION
+        return xmin <= x <= xmax and ymin <= y <= ymax

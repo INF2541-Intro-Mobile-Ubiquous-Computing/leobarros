@@ -26,3 +26,6 @@ NODE_LEVELS = {
     5: 3,
     6: 3,
 }
+
+# Destino geocast das perguntas: xmin, xmax, ymin, ymax (metros, limites inclusivos).
+GEOCAST_REGION = (0, 50, 30, 50)
