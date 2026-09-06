@@ -6,7 +6,6 @@ class NodeProtocol (IProtocol):
     sent: int
     received: int
     messageReceivedType: int
-    size: int
     defaultColor = constants.BLACK
     currentColor = constants.BLACK
 
@@ -14,19 +13,11 @@ class NodeProtocol (IProtocol):
         self.sent = 0
         self.received = 0
         self.messageReceivedType = constants.NO_MESSAGE_RECEIVED
-        self.size = constants.DEFAULT_SIZE
         self.visualization = VisualizationController(self)
         self.scheduleAppearanceTimer()
-
     # Recebimento de mensagens
     def handle_packet(self, message):
-        self.received += 1
-        if message.startswith("[PERGUNTA]"):
-            self.messageReceivedType = constants.QUESTION_RECEIVED
-            self.sendAnswer()
-        elif message.startswith("[RESPOSTA]"):
-            self.messageReceivedType = constants.ANSWER_RECEIVED
-        # self.forwardMessage(message)
+        pass
         
     # Recebimento de telemetria
     def handle_telemetry(self, telemetry):
@@ -52,13 +43,13 @@ class NodeProtocol (IProtocol):
         #logging.debug(f"Mensagem recebida no último ciclo: {self.receivedFromLastCycle}")
         if self.messageReceivedType == constants.ANSWER_RECEIVED:
             self.currentColor = constants.BLUE
-            self.size = constants.SIZE_WHEN_RECEIVING_MESSAGE
         if self.messageReceivedType == constants.QUESTION_RECEIVED:
             self.currentColor = constants.RED
-            self.size = constants.SIZE_WHEN_RECEIVING_MESSAGE
         self.visualization.paint_node(self.provider.get_id(), self.currentColor)
-        self.visualization.resize_nodes(self.size)
+        self.visualization.resize_nodes(constants.DEFAULT_SIZE) # TODO chamar uma vez só
         self.messageReceivedType = constants.NO_MESSAGE_RECEIVED
-        self.size = constants.DEFAULT_SIZE
         self.currentColor = self.defaultColor
         self.scheduleAppearanceTimer()
+
+    def scheduleAnswer():
+        pass
