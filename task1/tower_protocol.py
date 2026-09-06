@@ -19,7 +19,7 @@ class TowerProtocol (NodeProtocol):
 
     def sendQuestion(self):
         command = CommunicationCommand(CommunicationCommandType.BROADCAST, 
-            message="[PERGUNTA] Quem vai ganhar a eleição para presidente?"
+            message="[0][PERGUNTA] Quem vai ganhar a eleição para presidente?"
         )
         self.provider.send_communication_command(command)
         self.sent += 1
