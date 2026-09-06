@@ -9,6 +9,7 @@ class TowerProtocol (NodeProtocol):
         super().initialize()
         self.defaultColor = constants.TOWER_COLOR # Cor default da torre
         self.currentColor = constants.TOWER_COLOR
+        self.lastResponse = None
         self.scheduleSendQuestionTimer()
 
     def handle_packet(self, message):
@@ -24,6 +25,7 @@ class TowerProtocol (NodeProtocol):
             return
         self.received += 1
         self.messageReceivedType = constants.ANSWER_RECEIVED
+        self.lastResponse = message.split("[RESPOSTA]", 1)[1].strip()
 
     # Tick dos relógios
     def handle_timer(self, timer):
@@ -44,3 +46,7 @@ class TowerProtocol (NodeProtocol):
             "communication",
             self.provider.current_time() + constants.SEND_QUESTION_INTERVAL
         )
+
+    def finish(self):
+        super().finish()
+        logging.info(f"O próximo presidente do Brasil será: {self.lastResponse}")

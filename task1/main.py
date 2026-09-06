@@ -10,7 +10,7 @@ from final_uav_protocol import FinalUAVProtocol
 
 def main():
     config = SimulationConfiguration(
-        duration=30,
+        duration=20,
         real_time=5.0
     )
     builder = SimulationBuilder(config)
