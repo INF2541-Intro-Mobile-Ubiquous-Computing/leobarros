@@ -1,4 +1,5 @@
 import logging, random, constants
+from uuid import uuid4
 from horizontal_uav_protocol import HorizontalUAVProtocol
 from gradysim.protocol.messages.communication import CommunicationCommand, CommunicationCommandType
 
@@ -31,7 +32,7 @@ class FinalUAVProtocol(HorizontalUAVProtocol):
             return
         self.received += 1
         self.messageReceivedType = constants.QUESTION_RECEIVED
-        response = f"[{self.level}][RESPOSTA] {random.choice(ANSWERS)}"
+        response = f"[{self.level}][ID:{uuid4()}][RESPOSTA] {random.choice(ANSWERS)}"
         command = CommunicationCommand(CommunicationCommandType.BROADCAST, response)
         self.provider.send_communication_command(command) # A resposta é imediata, aproveitando a proximidade do outro drone
         self.sent += 1

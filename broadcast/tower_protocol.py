@@ -1,5 +1,6 @@
 from gradysim.protocol.messages.communication import CommunicationCommand, CommunicationCommandType
 from node_protocol import NodeProtocol
+from uuid import uuid4
 import logging, constants
 
 class TowerProtocol (NodeProtocol):
@@ -35,7 +36,7 @@ class TowerProtocol (NodeProtocol):
 
     def sendQuestion(self):
         command = CommunicationCommand(CommunicationCommandType.BROADCAST, 
-            message="[0][PERGUNTA] Quem vai ganhar a eleição para presidente?"
+            message=f"[0][ID:{uuid4()}][PERGUNTA] Quem vai ganhar a eleição para presidente?"
         )
         self.provider.send_communication_command(command)
         self.sent += 1
