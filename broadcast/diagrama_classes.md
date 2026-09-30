@@ -13,6 +13,7 @@ classDiagram
     class NodeProtocol {
         +int sent
         +int received
+        +set seenMessageIds
         +int messageReceivedType
         +tuple defaultColor
         +tuple currentColor
@@ -24,6 +25,7 @@ classDiagram
         +finish()
         +scheduleAppearanceTimer()
         +setColorAndSize()
+        +getMessageId(message)
     }
 
     class TowerProtocol {
@@ -39,14 +41,12 @@ classDiagram
     class UAVProtocol {
         +tuple color
         +Position current_position
-        +int level
         +initialize()
         +handle_packet(message)
         +handle_telemetry(telemetry)
         +handle_timer(timer)
         +scheduleMobilityTimer()
         +move()
-        +getSenderLevel(message)
     }
 
     class HorizontalUAVProtocol {
@@ -71,11 +71,11 @@ classDiagram
 
 A seta com triângulo aponta para a classe base. `lastResponse` e `current_position` começam com `None`.
 
-- **NodeProtocol**: mantém contadores e controla a aparência dos nós.
-- **TowerProtocol**: envia perguntas periodicamente e recebe respostas do nível 1.
-- **UAVProtocol**: encaminha imediatamente perguntas para níveis superiores e respostas para níveis inferiores, sem armazenar mensagens para envio posterior.
+- **NodeProtocol**: mantém contadores, o conjunto de IDs já vistos e controla a aparência dos nós.
+- **TowerProtocol**: envia perguntas periodicamente e recebe respostas, ignorando IDs repetidos.
+- **UAVProtocol**: encaminha imediatamente cada pergunta ou resposta uma única vez por ID, sem armazenar mensagens para envio posterior.
 - **HorizontalUAVProtocol**: implementa movimento no eixo X.
 - **VerticalUAVProtocol**: implementa movimento no eixo Y.
-- **FinalUAVProtocol**: herda o movimento horizontal e responde imediatamente às perguntas recebidas de níveis inferiores.
+- **FinalUAVProtocol**: herda o movimento horizontal e responde imediatamente uma única vez a cada ID de pergunta.
 
 `main.py` monta a simulação e `constants.py` define as constantes; nenhum deles declara classes. `ANSWERS`, em `final_uav_protocol.py`, é uma constante do módulo.

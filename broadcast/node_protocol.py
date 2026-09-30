@@ -12,12 +12,19 @@ class NodeProtocol (IProtocol):
     def initialize(self):
         self.sent = 0
         self.received = 0
+        self.seenMessageIds = set()
         self.messageReceivedType = constants.NO_MESSAGE_RECEIVED
         self.visualization = VisualizationController(self)
         self.scheduleAppearanceTimer()
     # Recebimento de mensagens
     def handle_packet(self, message):
         pass
+
+    def getMessageId(self, message):
+        if not message.startswith("[ID:"):
+            return None
+        messageId, closingBracket, _ = message[4:].partition("]")
+        return messageId if closingBracket and messageId else None
         
     # Recebimento de telemetria
     def handle_telemetry(self, telemetry):

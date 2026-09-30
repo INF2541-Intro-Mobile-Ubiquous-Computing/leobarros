@@ -16,14 +16,13 @@ class TowerProtocol (NodeProtocol):
     def handle_packet(self, message):
         if "[RESPOSTA]" not in message:
             return
-        closingBracket = message.find("]")
-        try:
-            senderLevel = int(message[1:closingBracket])
-        except (ValueError, IndexError):
-            logging.error(f"Resposta sem nível válido: {message}")
+        messageId = self.getMessageId(message)
+        if messageId is None:
+            logging.error(f"Resposta sem ID válido: {message}")
             return
-        if senderLevel != 1: # A torre deve receber a resposta da camada imediatamente superior
+        if messageId in self.seenMessageIds:
             return
+        self.seenMessageIds.add(messageId)
         self.received += 1
         self.messageReceivedType = constants.ANSWER_RECEIVED
         self.lastResponse = message.split("[RESPOSTA]", 1)[1].strip()
@@ -35,9 +34,11 @@ class TowerProtocol (NodeProtocol):
             self.sendQuestion()
 
     def sendQuestion(self):
+        messageId = str(uuid4())
         command = CommunicationCommand(CommunicationCommandType.BROADCAST, 
-            message=f"[0][ID:{uuid4()}][PERGUNTA] Quem vai ganhar a eleição para presidente?"
+            message=f"[ID:{messageId}][PERGUNTA] Quem vai ganhar a eleição para presidente?"
         )
+        self.seenMessageIds.add(messageId)
         self.provider.send_communication_command(command)
         self.sent += 1
         self.scheduleSendQuestionTimer()

@@ -22,17 +22,20 @@ ANSWERS = (
 class FinalUAVProtocol(HorizontalUAVProtocol):
 
     def handle_packet(self, message):
-        senderLevel = self.getSenderLevel(message)
-        if senderLevel is None:
-            logging.error(f"Mensagem sem nível: {message}")
+        messageId = self.getMessageId(message)
+        if messageId is None:
+            logging.error(f"Mensagem sem ID válido: {message}")
             return
         if "[PERGUNTA]" not in message:
             return
-        if senderLevel >= self.level: # O drone final responde somente a perguntas vindas de níveis inferiores.
+        if messageId in self.seenMessageIds:
             return
+        self.seenMessageIds.add(messageId)
         self.received += 1
         self.messageReceivedType = constants.QUESTION_RECEIVED
-        response = f"[{self.level}][ID:{uuid4()}][RESPOSTA] {random.choice(ANSWERS)}"
+        responseId = str(uuid4())
+        response = f"[ID:{responseId}][RESPOSTA] {random.choice(ANSWERS)}"
         command = CommunicationCommand(CommunicationCommandType.BROADCAST, response)
+        self.seenMessageIds.add(responseId)
         self.provider.send_communication_command(command) # A resposta é imediata, aproveitando a proximidade do outro drone
         self.sent += 1

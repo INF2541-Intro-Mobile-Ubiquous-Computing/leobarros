@@ -16,13 +16,3 @@ TOWER_COLOR = (255, 100, 100)
 
 # Tamanho do nó
 DEFAULT_SIZE = 1.0
-
-NODE_LEVELS = {
-    0: 0,
-    1: 1,
-    2: 1,
-    3: 2,
-    4: 2,
-    5: 3,
-    6: 3,
-}

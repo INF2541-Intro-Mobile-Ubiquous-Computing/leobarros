@@ -11,21 +11,18 @@ class UAVProtocol (NodeProtocol):
         super().initialize()
         self.color = constants.UAV_COLOR # Cor default do drone
         self.current_position: Optional[Position] = None
-        self.level = constants.NODE_LEVELS[self.provider.get_id()]
         self.scheduleMobilityTimer()
 
     # Recebimento de mensagens
     def handle_packet(self, message):
-        senderLevel = self.getSenderLevel(message)
-        if senderLevel is None:
-            logging.error(f"Mensagem sem nível: {message}")
+        messageId = self.getMessageId(message)
+        if messageId is None:
+            logging.error(f"Mensagem sem ID válido: {message}")
+            return
+        if messageId in self.seenMessageIds:
             return
         isQuestion = "[PERGUNTA]" in message
         isAnswer = "[RESPOSTA]" in message
-        if isQuestion and senderLevel >= self.level: # Perguntas somente avançam
-            return
-        if isAnswer and senderLevel <= self.level: # Respostas somente retornam
-            return
         if not isQuestion and not isAnswer:
             logging.error(f"Mensagem não é pergunta nem resposta: {message}")
             return
@@ -34,8 +31,8 @@ class UAVProtocol (NodeProtocol):
             self.messageReceivedType = constants.QUESTION_RECEIVED
         elif isAnswer:
             self.messageReceivedType = constants.ANSWER_RECEIVED
-        forwardedMessage = f"[{self.level}]{message}"
-        command = CommunicationCommand(CommunicationCommandType.BROADCAST, forwardedMessage)
+        self.seenMessageIds.add(messageId)
+        command = CommunicationCommand(CommunicationCommandType.BROADCAST, message)
         self.provider.send_communication_command(command)
         self.sent += 1
 
@@ -54,14 +51,3 @@ class UAVProtocol (NodeProtocol):
 
     def move(self):
         pass
-
-    def getSenderLevel(self, message):
-        if not message.startswith("["):
-            return None
-        closingBracket = message.find("]")
-        if closingBracket == -1:
-            return None
-        try:
-            return int(message[1:closingBracket])
-        except ValueError:
-            return None
