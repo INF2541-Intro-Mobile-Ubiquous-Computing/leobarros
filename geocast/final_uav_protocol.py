@@ -1,6 +1,5 @@
-import logging, random, constants
+import random
 from horizontal_uav_protocol import HorizontalUAVProtocol
-from gradysim.protocol.messages.communication import CommunicationCommand, CommunicationCommandType
 
 ANSWERS = (
     "Com certeza, Luiz Inácio Lula da Silva (PT)!",
@@ -20,20 +19,5 @@ ANSWERS = (
 
 class FinalUAVProtocol(HorizontalUAVProtocol):
 
-    def handle_packet(self, message):
-        senderLevel = self.getSenderLevel(message)
-        if senderLevel is None:
-            logging.error(f"Mensagem sem nível: {message}")
-            return
-        if "[PERGUNTA]" not in message:
-            return
-        if senderLevel >= self.level: # O drone final responde somente a perguntas vindas de níveis inferiores.
-            return
-        if not self.isInGeocastRegion():
-            return
-        self.received += 1
-        self.messageReceivedType = constants.QUESTION_RECEIVED
-        response = f"[{self.level}][RESPOSTA] {random.choice(ANSWERS)}"
-        command = CommunicationCommand(CommunicationCommandType.BROADCAST, response)
-        self.provider.send_communication_command(command) # A resposta é imediata, aproveitando a proximidade do outro drone
-        self.sent += 1
+    def answerText(self):
+        return random.choice(ANSWERS)

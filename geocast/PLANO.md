@@ -1,3 +1,6 @@
+> Documento histórico da versão com níveis, fila e broadcast de dados.
+> A versão atual usa HELLO, SEND e região explícita; veja [README.md](README.md).
+
 # Geocast com alterações mínimas
 
 Base: a pasta `geocast` já existe e seus oito arquivos Python são idênticos

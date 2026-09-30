@@ -7,6 +7,8 @@ ANSWER_RECEIVED = 2
 SEND_QUESTION_INTERVAL = 5 # de envio de pergunta
 MOBILITY_INTERVAL = 2 # de movimento do nó
 REPAINT_INTERVAL = 1 # de pintura do nó
+HELLO_INTERVAL = 2 # de anúncio de posição
+NEIGHBOR_TIMEOUT = 6 # contato deixa de ser usado sem HELLO recente
 
 # Cor do nó
 UAV_COLOR = (60, 60, 60)
@@ -16,16 +18,6 @@ TOWER_COLOR = (255, 100, 100)
 
 # Tamanho do nó
 DEFAULT_SIZE = 1.0
-
-NODE_LEVELS = {
-    0: 0,
-    1: 1,
-    2: 1,
-    3: 2,
-    4: 2,
-    5: 3,
-    6: 3,
-}
 
 # Destino geocast das perguntas: xmin, xmax, ymin, ymax (metros, limites inclusivos).
 GEOCAST_REGION = (0, 50, 30, 50)

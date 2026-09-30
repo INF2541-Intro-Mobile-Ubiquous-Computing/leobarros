@@ -1,3 +1,6 @@
+> Documento histórico da versão com níveis, fila e broadcast de dados.
+> A versão atual usa HELLO, SEND e região explícita; veja [README.md](README.md).
+
 # Verificação — Geocast mínimo
 
 Executada em 06/09/2026 com **Python 3.13.5**, GrADyS-SIM 0.8.0 e
