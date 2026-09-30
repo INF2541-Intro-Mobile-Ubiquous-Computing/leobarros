@@ -1,3 +1,6 @@
+> Documento histórico da versão com níveis, TTL e retransmissões periódicas.
+> O comportamento atual com HELLO está descrito em [README.md](README.md).
+
 # Plano revisado: diferença mínima em relação a broadcast
 
 1. Manter `main.py`, `horizontal_uav_protocol.py` e `vertical_uav_protocol.py`

@@ -1,5 +1,7 @@
 from gradysim.protocol.interface import IProtocol
 from gradysim.simulator.extension.visualization_controller import VisualizationController
+from gradysim.protocol.messages.communication import CommunicationCommand, CommunicationCommandType
+from collections import deque
 import constants, logging, re
 
 class NodeProtocol (IProtocol):
@@ -11,12 +13,14 @@ class NodeProtocol (IProtocol):
 
     def initialize(self):
         self.messageSequence = 0
-        self.seenMessages = {}
+        self.seenMessages = set()
+        self.communicationCommands = deque()
         self.sent = 0
         self.received = 0
         self.messageReceivedType = constants.NO_MESSAGE_RECEIVED
         self.visualization = VisualizationController(self)
         self.scheduleAppearanceTimer()
+        self.scheduleHelloTimer()
     # Recebimento de mensagens
     def handle_packet(self, message):
         pass
@@ -29,6 +33,11 @@ class NodeProtocol (IProtocol):
     def handle_timer(self, timer):
         if timer == "appearance":
             self.setColorAndSize()
+        elif timer == "hello":
+            command = CommunicationCommand(CommunicationCommandType.BROADCAST,
+                                           f"[HELLO={self.provider.get_id()}]")
+            self.provider.send_communication_command(command)
+            self.scheduleHelloTimer()
     
     # Finalização do objeto
     def finish(self):
@@ -52,31 +61,39 @@ class NodeProtocol (IProtocol):
         self.currentColor = self.defaultColor
         self.scheduleAppearanceTimer()
 
-    def scheduleAnswer():
-        pass
+    def scheduleHelloTimer(self):
+        self.provider.schedule_timer("hello", self.provider.current_time() + constants.HELLO_INTERVAL)
+
+    def handleHello(self, message):
+        if not message.startswith("[HELLO"):
+            return False
+        hello = re.fullmatch(r"\[HELLO=(\d+)\]", message)
+        if hello is None or int(hello[1]) == self.provider.get_id():
+            return True
+        while self.communicationCommands:
+            command = self.communicationCommands[0]
+            command.destination = int(hello[1])
+            self.provider.send_communication_command(command)
+            self.communicationCommands.popleft() # Sem ACK: retira após a tentativa de envio.
+            self.sent += 1
+        return True
+
+    def scheduleForwardMessage(self, message):
+        command = CommunicationCommand(CommunicationCommandType.SEND, message)
+        self.communicationCommands.append(command)
 
     def createMessage(self, message):
         self.messageSequence += 1
         messageId = f"{self.provider.get_id()}:{self.messageSequence}"
-        expiration = self.provider.current_time() + constants.MESSAGE_TTL
-        closingBracket = message.find("]") + 1
-        return f"{message[:closingBracket]}[ID={messageId}][EXP={expiration}]{message[closingBracket:]}"
+        self.seenMessages.add(messageId)
+        return f"[ID={messageId}]{message}"
 
     def getMessageMetadata(self, message):
-        return re.match(r"^(?:\[\d+\])+\[ID=(\d+:\d+)\]\[EXP=(\d+(?:\.\d+)?)\]", message)
-
-    def isMessageValid(self, message):
-        metadata = self.getMessageMetadata(message)
-        return metadata is not None and float(metadata[2]) > self.provider.current_time()
+        return re.match(r"^\[ID=(\d+:\d+)\]", message)
 
     def acceptMessage(self, message):
-        now = self.provider.current_time()
-        self.seenMessages = {key: expiration for key, expiration in self.seenMessages.items()
-                             if expiration > now}
-        if not self.isMessageValid(message):
-            return False
         metadata = self.getMessageMetadata(message)
-        if metadata[1] in self.seenMessages:
+        if metadata is None or metadata[1] in self.seenMessages:
             return False
-        self.seenMessages[metadata[1]] = float(metadata[2])
+        self.seenMessages.add(metadata[1])
         return True

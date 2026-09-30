@@ -1,3 +1,6 @@
+> Documento histórico da versão com níveis, TTL e retransmissões periódicas.
+> O comportamento atual com HELLO está descrito em [README.md](README.md).
+
 # Comparação e verificação da versão simplificada
 
 Esta revisão substitui o relatório da primeira implementação e segue o

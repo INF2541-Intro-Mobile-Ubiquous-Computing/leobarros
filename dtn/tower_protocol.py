@@ -1,7 +1,5 @@
-from gradysim.protocol.messages.communication import CommunicationCommand, CommunicationCommandType
 from node_protocol import NodeProtocol
 import logging, constants
-from collections import deque
 
 class TowerProtocol (NodeProtocol):
 
@@ -11,19 +9,12 @@ class TowerProtocol (NodeProtocol):
         self.defaultColor = constants.TOWER_COLOR # Cor default da torre
         self.currentColor = constants.TOWER_COLOR
         self.lastResponse = None
-        self.communicationCommands = deque()
         self.scheduleSendQuestionTimer()
 
     def handle_packet(self, message):
+        if self.handleHello(message):
+            return
         if "[RESPOSTA]" not in message:
-            return
-        closingBracket = message.find("]")
-        try:
-            senderLevel = int(message[1:closingBracket])
-        except (ValueError, IndexError):
-            logging.error(f"Resposta sem nível válido: {message}")
-            return
-        if senderLevel != 1: # A torre deve receber a resposta da camada imediatamente superior
             return
         if not self.acceptMessage(message):
             return
@@ -38,16 +29,9 @@ class TowerProtocol (NodeProtocol):
             self.sendQuestion()
 
     def sendQuestion(self):
-        command = CommunicationCommand(CommunicationCommandType.BROADCAST, 
-            message=self.createMessage("[0][PERGUNTA] Quem vai ganhar a eleição para presidente?")
+        self.scheduleForwardMessage(
+            self.createMessage("[PERGUNTA] Quem vai ganhar a eleição para presidente?")
         )
-        self.communicationCommands.append(command)
-        for _ in range(len(self.communicationCommands)):
-            command = self.communicationCommands.popleft()
-            if self.isMessageValid(command.message):
-                self.provider.send_communication_command(command)
-                self.sent += 1
-                self.communicationCommands.append(command) # Guarda para o próximo contato.
         self.scheduleSendQuestionTimer()
 
     def scheduleSendQuestionTimer(self):
