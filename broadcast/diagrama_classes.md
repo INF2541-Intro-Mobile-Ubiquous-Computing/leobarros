@@ -40,14 +40,11 @@ classDiagram
         +tuple color
         +Position current_position
         +int level
-        +deque communicationCommands
         +initialize()
         +handle_packet(message)
-        +scheduleForwardMessage(message)
         +handle_telemetry(telemetry)
         +handle_timer(timer)
         +scheduleMobilityTimer()
-        +moveAndSendMessage()
         +move()
         +getSenderLevel(message)
     }
@@ -76,7 +73,7 @@ A seta com triângulo aponta para a classe base. `lastResponse` e `current_posit
 
 - **NodeProtocol**: mantém contadores e controla a aparência dos nós.
 - **TowerProtocol**: envia perguntas periodicamente e recebe respostas do nível 1.
-- **UAVProtocol**: encaminha perguntas para níveis superiores e respostas para níveis inferiores, enviando as mensagens enfileiradas após o movimento.
+- **UAVProtocol**: encaminha imediatamente perguntas para níveis superiores e respostas para níveis inferiores, sem armazenar mensagens para envio posterior.
 - **HorizontalUAVProtocol**: implementa movimento no eixo X.
 - **VerticalUAVProtocol**: implementa movimento no eixo Y.
 - **FinalUAVProtocol**: herda o movimento horizontal e responde imediatamente às perguntas recebidas de níveis inferiores.
