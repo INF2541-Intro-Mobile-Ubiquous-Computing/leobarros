@@ -42,10 +42,6 @@ class UAVProtocol (NodeProtocol):
     def scheduleForwardMessage(self, message):
         command = CommunicationCommand(CommunicationCommandType.BROADCAST, message)
         self.communicationCommands.append(command)
-    
-    def scheduleAnswer(self):
-        message = (f"[{self.level}][RESPOSTA] E eu sei lá, ué")
-        self.scheduleForwardMessage(message)
 
    # Recebimento de telemetria
     def handle_telemetry(self, telemetry):

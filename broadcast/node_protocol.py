@@ -49,6 +49,3 @@ class NodeProtocol (IProtocol):
         self.messageReceivedType = constants.NO_MESSAGE_RECEIVED
         self.currentColor = self.defaultColor
         self.scheduleAppearanceTimer()
-
-    def scheduleAnswer():
-        pass
