@@ -2,7 +2,7 @@ from gradysim.protocol.interface import IProtocol
 from gradysim.simulator.extension.visualization_controller import VisualizationController
 import logging, constants
 
-# Nó pertencente ao Core do Swarm
+# Nó visível no Grid
 class VisibleNodeProtocol (IProtocol):
 
     # Inicialização do nó
@@ -25,7 +25,7 @@ class VisibleNodeProtocol (IProtocol):
     
     # Finalização do objeto
     def finish(self):
-        logging.info(f"1 nó parado")
+        pass
 
     # Garante que o nó possa ser exibido no Grid
     def showInGrid(self):
