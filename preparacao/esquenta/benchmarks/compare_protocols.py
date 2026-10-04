@@ -1,6 +1,6 @@
 """Run original main() headlessly, with passive correlation tags and isolated RNGs.
 
-Usage: .runtime/python-3.13.5/python.exe benchmarks/compare_protocols.py
+Usage: .runtime/python-3.13.5/python.exe preparacao/esquenta/benchmarks/compare_protocols.py
 Production protocol files are not edited. Every radio command counts as one send.
 """
 import csv

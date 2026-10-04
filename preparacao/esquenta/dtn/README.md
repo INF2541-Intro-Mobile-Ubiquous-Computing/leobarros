@@ -36,8 +36,8 @@ apagam filas e registros. IDs são únicos por nó e sequência dentro da execu�
 Na raiz do projeto:
 
 ```powershell
-.\.runtime\python-3.13.5\python.exe dtn\main.py
-.\.runtime\python-3.13.5\python.exe -m unittest discover -s dtn -p test_dtn.py -v
+.\.runtime\python-3.13.5\python.exe preparacao\esquenta\dtn\main.py
+.\.runtime\python-3.13.5\python.exe -m unittest discover -s preparacao/esquenta/dtn -p test_dtn.py -v
 ```
 
 `main.py` mantém a configuração e a visualização existentes.

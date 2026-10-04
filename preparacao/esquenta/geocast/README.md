@@ -61,7 +61,7 @@ Na raiz do projeto, com o runtime embarcado:
 
 ```powershell
 .\.runtime\python-3.13.5\python.exe .runtime\run_example.py geocast
-.\.runtime\python-3.13.5\python.exe -c "import sys, unittest; sys.path.insert(0, 'geocast'); unittest.main(module='test_geocast', verbosity=2)"
+.\.runtime\python-3.13.5\python.exe -c "import sys, unittest; sys.path.insert(0, 'preparacao/esquenta/geocast'); unittest.main(module='test_geocast', verbosity=2)"
 ```
 
 A seleção explícita da pasta evita importar os módulos homônimos de `dtn`,

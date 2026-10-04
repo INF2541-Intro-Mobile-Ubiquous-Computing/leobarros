@@ -5,8 +5,8 @@
 Na raiz do projeto:
 
 ```powershell
-.runtime/python-3.13.5/python.exe benchmarks/compare_protocols.py 100
-.runtime/python-3.13.5/python.exe benchmarks/compare_protocols.py 0
+.runtime/python-3.13.5/python.exe preparacao/esquenta/benchmarks/compare_protocols.py 100
+.runtime/python-3.13.5/python.exe preparacao/esquenta/benchmarks/compare_protocols.py 0
 ```
 
 O primeiro comando executa 100 sementes (0 a 99) por versão e duração,
