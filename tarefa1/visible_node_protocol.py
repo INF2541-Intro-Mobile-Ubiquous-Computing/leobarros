@@ -3,7 +3,7 @@ from gradysim.simulator.extension.visualization_controller import VisualizationC
 import logging, constants
 
 # Nó pertencente ao Core do Swarm
-class CoreProtocol (IProtocol):
+class VisibleNodeProtocol (IProtocol):
 
     # Inicialização do nó
     def initialize(self):
