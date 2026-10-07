@@ -13,11 +13,11 @@ class FlightPlan:
 
     # Retorna a posição interpolada do centro virtual no instante t
     def get_position(self, t):
-        # Converte t para o tempo dentro do ciclo atual
+        # Converte t (tempo absoluto) para o tempo relativo dentro do ciclo atual
         cycle_time = t % self.cycle_duration
-        # Descobre em qual segmento estamos
+        # Descobre o segmento do trajeto (0: P0->P1, 1: P1->P2, etc)
         segment_index = int(cycle_time // self.segment_duration)
-        # Tempo transcorrido dentro do segmento
+        # Tempo passado desde que começou o ciclo
         time_in_segment = cycle_time % self.segment_duration
         # Fração percorrida no segmento: 0.0 ... 1.0
         progress = time_in_segment / self.segment_duration

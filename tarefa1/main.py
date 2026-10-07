@@ -14,14 +14,14 @@ def main():
     center = (0, 0, 0)
     radius = 20
     builder.add_node(MovableNodeProtocol, position_on_circle(center, radius, 0)) #1
-    builder.add_node(VisibleNodeProtocol, position_on_circle(center, radius, 40)) #2
-    builder.add_node(VisibleNodeProtocol, position_on_circle(center, radius, 80)) #3
-    builder.add_node(VisibleNodeProtocol, position_on_circle(center, radius, 120)) #4
-    builder.add_node(VisibleNodeProtocol, position_on_circle(center, radius, 160)) #5
-    builder.add_node(VisibleNodeProtocol, position_on_circle(center, radius, 200)) #6
-    builder.add_node(VisibleNodeProtocol, position_on_circle(center, radius, 240)) #7
-    builder.add_node(VisibleNodeProtocol, position_on_circle(center, radius, 280)) #8
-    builder.add_node(VisibleNodeProtocol, position_on_circle(center, radius, 320)) #9
+    builder.add_node(MovableNodeProtocol, position_on_circle(center, radius, 40)) #2
+    builder.add_node(MovableNodeProtocol, position_on_circle(center, radius, 80)) #3
+    builder.add_node(MovableNodeProtocol, position_on_circle(center, radius, 120)) #4
+    builder.add_node(MovableNodeProtocol, position_on_circle(center, radius, 160)) #5
+    builder.add_node(MovableNodeProtocol, position_on_circle(center, radius, 200)) #6
+    builder.add_node(MovableNodeProtocol, position_on_circle(center, radius, 240)) #7
+    builder.add_node(MovableNodeProtocol, position_on_circle(center, radius, 280)) #8
+    builder.add_node(MovableNodeProtocol, position_on_circle(center, radius, 320)) #9
 
     flight_plan = FlightPlan(
         points=[

@@ -1,5 +1,5 @@
 from visible_node_protocol import VisibleNodeProtocol
-import constants, logging
+import constants
 
 # Nó que pode se mover
 class MovableNodeProtocol (VisibleNodeProtocol):
