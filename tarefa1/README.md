@@ -3,6 +3,34 @@
 .\\.venv\Scripts\Activate.ps1
 
 ## Tarefa 1
+
+### UAV externo
+
+`main.py` adiciona um UAV externo em `(-30, 0, 0)`, depois dos membros do core.
+`MovableExternalUAVProtocol` cuida do movimento, sem enviar mensagens.
+A posição inicial é recebida pela telemetria do próprio UAV.
+
+Os parâmetros em `constants.py` são:
+
+- `EXTERNAL_TARGET_INDEX = 0`: índice do membro do core, contado a partir de zero.
+- `EXTERNAL_SPEED = 24.0`: velocidade de deslocamento em m/s.
+- `EXTERNAL_AWAY_DURATION = 5.0`: duração do afastamento em segundos simulados.
+- `EXTERNAL_CONTACT_DISTANCE = 5.0`: distância suficiente para considerar contato.
+- `EXTERNAL_INTERCEPT_STEP = 0.05`: passo temporal da procura por uma interceptação.
+
+No afastamento, uma direção no plano XY é sorteada no semiplano orientado para
+fora do centro virtual e mantida durante todo o período. Essa orientação é
+definida no início; o centro continua se movendo independentemente.
+
+Na busca, o UAV prevê a translação e rotação do alvo a partir do plano e procura
+o primeiro instante da grade temporal em que a distância até a esfera de contato
+é menor ou igual à distância que consegue percorrer. O destino é a borda dessa
+esfera, não o centro do alvo. A busca é recalculada a cada timer de movimento.
+É uma aproximação temporal de 0,05 s, não uma otimização contínua exata.
+
+O contato é verificado a cada telemetria contra a posição prevista do alvo.
+Ao atingir a distância configurada, o UAV sorteia outro afastamento e reinicia
+o ciclo. Não é necessário aguardar confirmação nem encostar no alvo.
 ### Para executar
 python main.py
 

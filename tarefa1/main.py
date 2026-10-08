@@ -2,6 +2,7 @@ from gradysim.simulator.simulation import SimulationBuilder, SimulationConfigura
 from gradysim.simulator.handler.timer import TimerHandler
 from gradysim.simulator.handler.mobility import MobilityHandler
 from movable_core_uav_protocol import MovableCoreUAVProtocol
+from movable_external_uav_protocol import MovableExternalUAVProtocol
 from flight_plan import FlightPlan
 from real_time_handler import RealTimeHandler, PacedVisualizationHandler
 import constants
@@ -25,6 +26,8 @@ def main():
             MovableCoreUAVProtocol,
             FlightPlan.position_on_circle(center, constants.FORMATION_RADIUS, angle),
         )
+
+    builder.add_node(MovableExternalUAVProtocol, (-30, 0, 0))
 
     builder.add_handler(TimerHandler())
     builder.add_handler(MobilityHandler())

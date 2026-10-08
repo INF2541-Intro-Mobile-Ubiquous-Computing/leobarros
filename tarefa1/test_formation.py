@@ -82,7 +82,7 @@ class FormationTest(unittest.TestCase):
             expected_angle = initial_angle + constants.ANGULAR_SPEED * time
             self.assertAlmostEqual((angle - expected_angle + 180) % 360 - 180, 0)
             self.assertAlmostEqual(math.dist(target, center), constants.FORMATION_RADIUS)
-        for time in (0, 5, 10, 15, 20, 25, 30, 35, 40):
+        for time in range(0, int(cycle_duration) + 1, 5):
             self.assertEqual(sum(math.isclose(t, time, abs_tol=1e-8) for t, *_ in samples), 9)
 
         # Todos realmente percorreram o trajeto: observar posições durante a execução

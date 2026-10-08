@@ -20,6 +20,13 @@ DRONE_COUNT = 9
 MOVEMENT_SPEED = 1.2 * (CENTER_SPEED + abs(ROTATION_SPEED))
 REAL_TIME = 3.0  # 1: tempo real; 0.5: meia velocidade; 2: dobro da velocidade.
 
+# UAV externo: movimento e contato com a posição prevista de um membro do core.
+EXTERNAL_TARGET_INDEX = 0
+EXTERNAL_SPEED = 24.0  # m/s
+EXTERNAL_AWAY_DURATION = 5.0  # segundos simulados
+EXTERNAL_CONTACT_DISTANCE = 5.0  # metros
+EXTERNAL_INTERCEPT_STEP = 0.05  # resolução temporal da busca, em segundos
+
 # Cor do nó
 DEFAULT_COLOR = (0, 0, 0)
 
