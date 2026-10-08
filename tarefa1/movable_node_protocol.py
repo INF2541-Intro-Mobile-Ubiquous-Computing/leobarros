@@ -14,7 +14,7 @@ class MovableNodeProtocol (VisibleNodeProtocol):
     def initialize(self):
         super().initialize()
         self.flight_plan = FlightPlan(
-            list(constants.FLIGHT_PLAN_POINTS), constants.SEGMENT_DURATION
+            list(constants.FLIGHT_PLAN_POINTS), constants.CENTER_SPEED
         )
         # Estou contando que main.py adicione os drones em ordem, com IDs de 0 a DRONE_COUNT - 1.
         self.initial_angle = self.provider.get_id() * 360 / constants.DRONE_COUNT

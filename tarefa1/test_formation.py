@@ -12,8 +12,44 @@ from movable_node_protocol import MovableNodeProtocol
 
 
 class FormationTest(unittest.TestCase):
+    def test_center_keeps_speed_on_unequal_segments_and_closes_cycle(self):
+        points = ((-50, 50, 0), (-50, -50, 0), (50, 50, 0), (50, -50, 0))
+        plan = FlightPlan(points, speed=3)
+        self.assertAlmostEqual(plan.segment_durations[0], 100 / 3)
+        self.assertAlmostEqual(plan.segment_durations[1], math.sqrt(20000) / 3)
+        start_time = 0
+        for index, duration in enumerate(plan.segment_durations):
+            with self.subTest(segment=index):
+                t = start_time + duration / 2
+                self.assertAlmostEqual(math.dist(plan.get_position(t), plan.get_position(t + 0.1)), 0.3)
+                expected = points[(index + 1) % len(points)]
+                self.assertLess(math.dist(plan.get_position(start_time + duration), expected), 1e-10)
+            start_time += duration
+        self.assertEqual(plan.get_position(plan.cycle_duration), points[0])
+        self.assertLess(math.dist(plan.get_position(plan.cycle_duration + 5), plan.get_position(5)), 1e-10)
+
+    def test_repeated_points_and_invalid_plans(self):
+        plan = FlightPlan(((0, 0, 0), (0, 0, 0), (3, 0, 0)), speed=3)
+        self.assertEqual(plan.get_position(0), (0, 0, 0))
+        self.assertEqual(plan.get_position(1), (3, 0, 0))
+        for points, speed in (
+            (((0, 0, 0), (3, 0, 0)), 0),
+            (((0, 0, 0), (3, 0, 0)), -1),
+            (((0, 0, 0),), 3),
+            (((0, 0, 0), (0, 0, 0)), 3),
+        ):
+            with self.subTest(points=points, speed=speed), self.assertRaises(ValueError):
+                FlightPlan(points, speed)
+
+    def test_angular_speed_preserves_tangential_speed(self):
+        self.assertAlmostEqual(
+            math.radians(constants.ANGULAR_SPEED) * constants.FORMATION_RADIUS,
+            constants.ROTATION_SPEED,
+        )
+
     def test_independent_plans_and_movement_over_a_complete_cycle(self):
-        builder = SimulationBuilder(SimulationConfiguration(duration=41))
+        cycle_duration = FlightPlan(constants.FLIGHT_PLAN_POINTS, constants.CENTER_SPEED).cycle_duration
+        builder = SimulationBuilder(SimulationConfiguration(duration=cycle_duration + 1))
         mobility = MobilityHandler()
         timer = TimerHandler()
         builder.add_handler(timer)
@@ -39,7 +75,7 @@ class FormationTest(unittest.TestCase):
 
         self.assertEqual(len(plans), 9)
         self.assertEqual(len({id(plan) for plan in plans.values()}), 9)
-        expected_plan = FlightPlan(list(constants.FLIGHT_PLAN_POINTS), constants.SEGMENT_DURATION)
+        expected_plan = FlightPlan(list(constants.FLIGHT_PLAN_POINTS), constants.CENTER_SPEED)
         for time, center, target, initial_angle in samples:
             self.assertEqual(center, expected_plan.get_position(time))
             angle = math.degrees(math.atan2(target[1] - center[1], target[0] - center[0]))
@@ -64,12 +100,12 @@ class FormationTest(unittest.TestCase):
         builder.add_node(MovableNodeProtocol, (constants.FORMATION_RADIUS, 0, 0))
         builder.build().start_simulation()
         position = mobility.nodes[0].position
-        plan = FlightPlan(list(constants.FLIGHT_PLAN_POINTS), constants.SEGMENT_DURATION)
+        plan = FlightPlan(list(constants.FLIGHT_PLAN_POINTS), constants.CENTER_SPEED)
         expected = FlightPlan.position_on_circle(
             plan.get_position(5.5), constants.FORMATION_RADIUS, constants.ANGULAR_SPEED * 5.5
         )
         center_speed = max(
-            math.dist(point, plan.points[(index + 1) % len(plan.points)]) / plan.segment_duration
+            math.dist(point, plan.points[(index + 1) % len(plan.points)]) / plan.segment_durations[index]
             for index, point in enumerate(plan.points)
         )
         target_speed = center_speed + constants.FORMATION_RADIUS * abs(math.radians(constants.ANGULAR_SPEED))
@@ -80,7 +116,7 @@ class FormationTest(unittest.TestCase):
     def test_rotation_uses_absolute_time_and_supports_both_directions(self):
         drone = MovableNodeProtocol()
         drone.provider = Mock()
-        drone.flight_plan = FlightPlan(list(constants.FLIGHT_PLAN_POINTS), constants.SEGMENT_DURATION)
+        drone.flight_plan = FlightPlan(list(constants.FLIGHT_PLAN_POINTS), constants.CENTER_SPEED)
         drone.initial_angle = 0
         for speed, time, direction in (
             (9, 40, (1, 0)), (9, 10, (0, 1)),
