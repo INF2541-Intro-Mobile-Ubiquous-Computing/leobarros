@@ -4,9 +4,9 @@ from gradysim.protocol.messages.mobility import GotoCoordsMobilityCommand, SetSp
 import constants
 
 '''
-Nó que pode se mover
+Classe responsável pela mobilidade de um drone do Core
 '''
-class MovableNodeProtocol (VisibleNodeProtocol):
+class MovableCoreUAVProtocol (VisibleNodeProtocol):
 
     '''
     Inicialização do nó

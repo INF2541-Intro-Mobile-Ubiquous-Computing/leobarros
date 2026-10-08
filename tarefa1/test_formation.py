@@ -8,7 +8,7 @@ from gradysim.simulator.simulation import SimulationBuilder, SimulationConfigura
 
 import constants
 from flight_plan import FlightPlan
-from movable_node_protocol import MovableNodeProtocol
+from movable_core_uav_protocol import MovableCoreUAVProtocol
 
 
 class FormationTest(unittest.TestCase):
@@ -55,14 +55,14 @@ class FormationTest(unittest.TestCase):
         builder.add_handler(timer)
         builder.add_handler(mobility)
         for index in range(constants.DRONE_COUNT):
-            builder.add_node(MovableNodeProtocol, FlightPlan.position_on_circle(
+            builder.add_node(MovableCoreUAVProtocol, FlightPlan.position_on_circle(
                 constants.FLIGHT_PLAN_POINTS[0], constants.FORMATION_RADIUS,
                 index * 360 / constants.DRONE_COUNT,
             ))
         simulation = builder.build()
         samples = []
         plans = {}
-        original_move = MovableNodeProtocol.move
+        original_move = MovableCoreUAVProtocol.move
 
         def observe_move(drone):
             original_move(drone)
@@ -70,7 +70,7 @@ class FormationTest(unittest.TestCase):
             plans[drone.provider.get_id()] = drone.flight_plan
             samples.append((time, drone.center, drone.target_position, drone.initial_angle))
 
-        with patch.object(MovableNodeProtocol, 'move', observe_move):
+        with patch.object(MovableCoreUAVProtocol, 'move', observe_move):
             simulation.start_simulation()
 
         self.assertEqual(len(plans), 9)
@@ -97,7 +97,7 @@ class FormationTest(unittest.TestCase):
         mobility = MobilityHandler()
         builder.add_handler(TimerHandler())
         builder.add_handler(mobility)
-        builder.add_node(MovableNodeProtocol, (constants.FORMATION_RADIUS, 0, 0))
+        builder.add_node(MovableCoreUAVProtocol, (constants.FORMATION_RADIUS, 0, 0))
         builder.build().start_simulation()
         position = mobility.nodes[0].position
         plan = FlightPlan(list(constants.FLIGHT_PLAN_POINTS), constants.CENTER_SPEED)
@@ -114,7 +114,7 @@ class FormationTest(unittest.TestCase):
         self.assertLessEqual(math.dist(position, expected), tolerance)
 
     def test_rotation_uses_absolute_time_and_supports_both_directions(self):
-        drone = MovableNodeProtocol()
+        drone = MovableCoreUAVProtocol()
         drone.provider = Mock()
         drone.flight_plan = FlightPlan(list(constants.FLIGHT_PLAN_POINTS), constants.CENTER_SPEED)
         drone.initial_angle = 0

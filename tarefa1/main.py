@@ -1,7 +1,7 @@
 from gradysim.simulator.simulation import SimulationBuilder, SimulationConfiguration
 from gradysim.simulator.handler.timer import TimerHandler
 from gradysim.simulator.handler.mobility import MobilityHandler
-from movable_node_protocol import MovableNodeProtocol
+from movable_core_uav_protocol import MovableCoreUAVProtocol
 from flight_plan import FlightPlan
 from real_time_handler import RealTimeHandler, PacedVisualizationHandler
 import constants
@@ -22,7 +22,7 @@ def main():
     for index in range(constants.DRONE_COUNT):
         angle = index * 360 / constants.DRONE_COUNT
         builder.add_node(
-            MovableNodeProtocol,
+            MovableCoreUAVProtocol,
             FlightPlan.position_on_circle(center, constants.FORMATION_RADIUS, angle),
         )
 
