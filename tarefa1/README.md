@@ -6,13 +6,16 @@
 
 ### UAV externo
 
-`main.py` adiciona um UAV externo em `(-30, 0, 0)`, depois dos membros do core.
+`main.py` adiciona quatro UAVs externos, depois dos membros do core, a 30 m do
+centro inicial: leste (alvo 0), oeste (alvo 2), norte (alvo 4) e sul (alvo 6).
+Cada classe configurada por `MovableExternalUAVProtocol.with_target(index)`
+mantém seu próprio alvo; posições e alvos são definidos na lista `external_drones`.
 `MovableExternalUAVProtocol` cuida do movimento, sem enviar mensagens.
 A posição inicial é recebida pela telemetria do próprio UAV.
 
 Os parâmetros em `constants.py` são:
 
-- `EXTERNAL_TARGET_INDEX = 0`: índice do membro do core, contado a partir de zero.
+- `EXTERNAL_TARGET_INDEX = 0`: alvo padrão quando não indicado por `with_target`.
 - `EXTERNAL_SPEED = 24.0`: velocidade de deslocamento em m/s.
 - `EXTERNAL_AWAY_DURATION = 5.0`: duração do afastamento em segundos simulados.
 - `EXTERNAL_CONTACT_DISTANCE = 5.0`: distância suficiente para considerar contato.

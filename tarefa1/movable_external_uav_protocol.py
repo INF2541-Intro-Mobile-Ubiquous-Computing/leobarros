@@ -7,9 +7,21 @@ import constants
 
 class MovableExternalUAVProtocol (VisibleNodeProtocol):
 
+    target_index = None
+
+    @classmethod
+    def with_target(cls, index):
+        """O builder recebe uma classe; cria uma configuração para este alvo."""
+        class ConfiguredExternalUAV(cls):
+            target_index = index
+
+        return ConfiguredExternalUAV
+
     def initialize(self):
         super().initialize()
-        if not 0 <= constants.EXTERNAL_TARGET_INDEX < constants.DRONE_COUNT:
+        if self.target_index is None:
+            self.target_index = constants.EXTERNAL_TARGET_INDEX
+        if not 0 <= self.target_index < constants.DRONE_COUNT:
             raise ValueError('Índice do alvo externo fora do core.')
         for value in (constants.EXTERNAL_SPEED, constants.EXTERNAL_AWAY_DURATION,
                       constants.EXTERNAL_CONTACT_DISTANCE, constants.EXTERNAL_INTERCEPT_STEP):
@@ -66,7 +78,7 @@ class MovableExternalUAVProtocol (VisibleNodeProtocol):
 
     def target_position(self, time):
         center = self.flight_plan.get_position(time)
-        angle = constants.EXTERNAL_TARGET_INDEX * 360 / constants.DRONE_COUNT + constants.ANGULAR_SPEED * time
+        angle = self.target_index * 360 / constants.DRONE_COUNT + constants.ANGULAR_SPEED * time
         return FlightPlan.position_on_circle(center, constants.FORMATION_RADIUS, angle)
 
     def in_contact(self, now):

@@ -27,7 +27,16 @@ def main():
             FlightPlan.position_on_circle(center, constants.FORMATION_RADIUS, angle),
         )
 
-    builder.add_node(MovableExternalUAVProtocol, (-30, 0, 0))
+    # Deslocamentos em relação ao centro inicial: leste, oeste, norte e sul.
+    external_drones = (
+        ((30, 0, 0), 0),
+        ((-30, 0, 0), 2),
+        ((0, 30, 0), 4),
+        ((0, -30, 0), 6),
+    )
+    for offset, target_index in external_drones:
+        position = tuple(c + d for c, d in zip(center, offset))
+        builder.add_node(MovableExternalUAVProtocol.with_target(target_index), position)
 
     builder.add_handler(TimerHandler())
     builder.add_handler(MobilityHandler())

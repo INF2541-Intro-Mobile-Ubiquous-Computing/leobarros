@@ -13,6 +13,28 @@ import constants
 
 
 class ExternalMovementTest(unittest.TestCase):
+    def test_main_assigns_four_independent_targets_at_cardinal_positions(self):
+        import main
+        with patch.object(main, 'SimulationBuilder') as builder_class, \
+             patch.object(main, 'PacedVisualizationHandler'):
+            main.main()
+        calls = builder_class.return_value.add_node.call_args_list
+        self.assertEqual(len(calls), constants.DRONE_COUNT + 4)
+        center = constants.FLIGHT_PLAN_POINTS[0]
+        assignments = (((30, 0, 0), 0), ((-30, 0, 0), 2),
+                       ((0, 30, 0), 4), ((0, -30, 0), 6))
+        drones = []
+        for call, (offset, target) in zip(calls[-4:], assignments):
+            protocol, position = call.args
+            self.assertEqual(position, tuple(c + d for c, d in zip(center, offset)))
+            drone = protocol.instantiate(Mock())
+            drone.provider.current_time.return_value = 0
+            with patch('movable_external_uav_protocol.VisibleNodeProtocol.initialize'):
+                drone.initialize()
+            self.assertEqual(drone.target_index, target)
+            drones.append(drone)
+        self.assertEqual([drone.target_index for drone in drones], [0, 2, 4, 6])
+
     def make_drone(self):
         drone = MovableExternalUAVProtocol()
         drone.provider = Mock()
@@ -52,7 +74,7 @@ class ExternalMovementTest(unittest.TestCase):
 
     def test_target_index_and_contact_without_touching(self):
         drone = self.make_drone()
-        with patch.object(constants, 'EXTERNAL_TARGET_INDEX', 3):
+        with patch.object(drone, 'target_index', 3):
             center = drone.flight_plan.get_position(2)
             expected = FlightPlan.position_on_circle(center, constants.FORMATION_RADIUS,
                 3 * 360 / constants.DRONE_COUNT + constants.ANGULAR_SPEED * 2)

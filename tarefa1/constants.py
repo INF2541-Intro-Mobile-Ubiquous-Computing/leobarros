@@ -18,7 +18,7 @@ ANGULAR_SPEED = math.degrees(ROTATION_SPEED / FORMATION_RADIUS)  # graus/s
 DRONE_COUNT = 9
 # Velocidade para alcançar os alvos, com 20% de margem sobre a referência máxima.
 MOVEMENT_SPEED = 1.2 * (CENTER_SPEED + abs(ROTATION_SPEED))
-REAL_TIME = 3.0  # 1: tempo real; 0.5: meia velocidade; 2: dobro da velocidade.
+REAL_TIME = 1.0  # 1: tempo real; 0.5: meia velocidade; 2: dobro da velocidade.
 
 # UAV externo: movimento e contato com a posição prevista de um membro do core.
 EXTERNAL_TARGET_INDEX = 0
