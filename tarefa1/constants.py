@@ -4,12 +4,14 @@ MOVEMENT_TIMER = "movement"
 
 # Intervalos
 REPAINT_INTERVAL = 1
-MOVEMENT_INTERVAL = 1
+MOVEMENT_INTERVAL = 0.1
 
 # Plano de vôo comum aos drones; o instante zero da simulação é o início da missão.
 FLIGHT_PLAN_POINTS = ((0, 0, 0), (50, 0, 0), (50, -50, 0), (0, -50, 0))
+#FLIGHT_PLAN_POINTS = ((-50, 50, 0), (-50, -50, 0), (50, 50, 0), (50, -50, 0))
 SEGMENT_DURATION = 10
 FORMATION_RADIUS = 10
+ANGULAR_SPEED = 9  # graus/s; positivo: anti-horário; uma volta em 40 s.
 DRONE_COUNT = 9
 MOVEMENT_SPEED = 10  # m/s
 

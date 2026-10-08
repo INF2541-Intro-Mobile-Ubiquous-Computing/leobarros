@@ -17,10 +17,7 @@ class MovableNodeProtocol (VisibleNodeProtocol):
             list(constants.FLIGHT_PLAN_POINTS), constants.SEGMENT_DURATION
         )
         # Estou contando que main.py adicione os drones em ordem, com IDs de 0 a DRONE_COUNT - 1.
-        angle = self.provider.get_id() * 360 / constants.DRONE_COUNT
-        self.offset = FlightPlan.position_on_circle(
-            (0, 0, 0), constants.FORMATION_RADIUS, angle
-        )
+        self.initial_angle = self.provider.get_id() * 360 / constants.DRONE_COUNT
         self.provider.send_mobility_command(SetSpeedMobilityCommand(constants.MOVEMENT_SPEED))
         self.move()
         self.schedule_movement_timer()
@@ -46,12 +43,11 @@ class MovableNodeProtocol (VisibleNodeProtocol):
     este drone.
     '''
     def move(self):
-        self.center = self.flight_plan.get_position(self.provider.current_time())
-        # Pareia as coordenadas do centro com as do offset inicial
-        # (cx,cy,cz) e (ox,oy,oz) -> [(cx,ox),(cy,oy),(cz,oz)]
-        paired_positions = zip(self.center, self.offset) 
-        new_position = []
-        for centerCoords, offsetCoords in paired_positions:
-            new_position.append(centerCoords + offsetCoords)
-        self.target_position = tuple(new_position)
+        t = self.provider.current_time()
+        self.center = self.flight_plan.get_position(t)
+        # O tempo absoluto mantém a fase da rotação mesmo se um timer atrasar.
+        angle = (self.initial_angle + constants.ANGULAR_SPEED * t) % 360
+        self.target_position = FlightPlan.position_on_circle(
+            self.center, constants.FORMATION_RADIUS, angle
+        )
         self.provider.send_mobility_command(GotoCoordsMobilityCommand(*self.target_position))
