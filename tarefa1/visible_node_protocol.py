@@ -12,7 +12,7 @@ class VisibleNodeProtocol (IProtocol):
     '''
     def initialize(self):
         self.show_in_grid()
-        self.schedule_repaint_timer()
+        self.repaint()
 
     '''
     Recebimento de mensagens
@@ -58,7 +58,7 @@ class VisibleNodeProtocol (IProtocol):
     Repinta o nó, definindo sua cor e tamanho
     '''
     def repaint(self):
-        self.currentColor = constants.DEFAULT_COLOR
+        self.currentColor = getattr(self, 'color', constants.DEFAULT_COLOR)
         self.visualization.resize_nodes(constants.DEFAULT_SIZE)
         self.visualization.paint_node(self.provider.get_id(), self.currentColor)
-        self.schedule_repaint_timer()    
+        self.schedule_repaint_timer()

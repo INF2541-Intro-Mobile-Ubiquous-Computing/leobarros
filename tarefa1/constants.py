@@ -29,6 +29,12 @@ EXTERNAL_INTERCEPT_STEP = 0.05  # resolução temporal da busca, em segundos
 
 # Cor do nó
 DEFAULT_COLOR = (0, 0, 0)
+PAIR_COLORS = {
+    0: (0, 114, 178),    # Azul
+    2: (230, 159, 0),    # Laranja
+    4: (0, 158, 115),    # Verde
+    6: (204, 121, 167),  # Magenta
+}
 
 # Tamanho do nó
 DEFAULT_SIZE = 1.0

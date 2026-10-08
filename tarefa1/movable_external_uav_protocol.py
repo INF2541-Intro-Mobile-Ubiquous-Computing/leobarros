@@ -18,9 +18,10 @@ class MovableExternalUAVProtocol (VisibleNodeProtocol):
         return ConfiguredExternalUAV
 
     def initialize(self):
-        super().initialize()
         if self.target_index is None:
             self.target_index = constants.EXTERNAL_TARGET_INDEX
+        self.color = constants.PAIR_COLORS.get(self.target_index, constants.DEFAULT_COLOR)
+        super().initialize()
         if not 0 <= self.target_index < constants.DRONE_COUNT:
             raise ValueError('Índice do alvo externo fora do core.')
         for value in (constants.EXTERNAL_SPEED, constants.EXTERNAL_AWAY_DURATION,

@@ -12,6 +12,7 @@ class MovableCoreUAVProtocol (VisibleNodeProtocol):
     Inicialização do nó
     '''
     def initialize(self):
+        self.color = constants.PAIR_COLORS.get(self.provider.get_id(), constants.DEFAULT_COLOR)
         super().initialize()
         self.flight_plan = FlightPlan(
             list(constants.FLIGHT_PLAN_POINTS), constants.CENTER_SPEED
