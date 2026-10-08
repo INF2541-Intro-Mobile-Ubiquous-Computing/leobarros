@@ -1,9 +1,17 @@
-# Plano de vôo do Swarm (trajeto em forma de polígono percorrido ciclicamente 
-# pelo centro virtual do core)
+import math
+
+
+'''
+Plano de vôo do Swarm (trajeto em forma de polígono percorrido ciclicamente 
+pelo centro virtual do core)
+'''
 class FlightPlan:
 
+    '''
+    Construtor.
     # point: lista de coordenadas
     # segment_duration: tempo gasto para percorrer cada trecho entre os pontos
+    '''
     def __init__(self, points, segment_duration):
         self.points = points
         self.segment_duration = segment_duration
@@ -11,7 +19,9 @@ class FlightPlan:
         self.num_segments = len(points)
         self.cycle_duration = self.num_segments * segment_duration
 
-    # Retorna a posição interpolada do centro virtual no instante t
+    '''
+    Retorna a posição interpolada do centro virtual no instante t ao longo do plano de vôo
+    '''
     def get_position(self, t):
         # Converte t (tempo absoluto) para o tempo relativo dentro do ciclo atual
         cycle_time = t % self.cycle_duration
@@ -29,3 +39,16 @@ class FlightPlan:
         # Z permanece fixo
         z = 0
         return (x, y, z)
+
+    """
+    Retorna a posição no círculo horizontal, com ângulo em graus e Z do centro.
+    """
+    @staticmethod
+    def position_on_circle(center, radius, angle):
+        x_center, y_center, z_center = center
+        angle_rad = math.radians(angle)
+        return (
+            x_center + radius * math.cos(angle_rad),
+            y_center + radius * math.sin(angle_rad),
+            z_center,
+        )
