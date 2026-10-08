@@ -22,14 +22,28 @@ Os parâmetros em `constants.py` são:
 - `EXTERNAL_INTERCEPT_STEP = 0.05`: passo temporal da procura por uma interceptação.
 
 No afastamento, uma direção no plano XY é sorteada no semiplano orientado para
-fora do centro virtual e mantida durante todo o período. Essa orientação é
+fora do centro virtual e mantida como direção preferencial durante o período.
+O controle de segurança pode desviá-la temporariamente. Essa orientação é
 definida no início; o centro continua se movendo independentemente.
 
 Na busca, o UAV prevê a translação e rotação do alvo a partir do plano e procura
-o primeiro instante da grade temporal em que a distância até a esfera de contato
-é menor ou igual à distância que consegue percorrer. O destino é a borda dessa
-esfera, não o centro do alvo. A busca é recalculada a cada timer de movimento.
-É uma aproximação temporal de 0,05 s, não uma otimização contínua exata.
+o primeiro instante da grade temporal em que consegue alcançar um ponto 3 m
+radialmente para fora do alvo (`EXTERNAL_CONTACT_OFFSET`). A busca é recalculada
+a cada timer de movimento. É uma estimativa pelo caminho reto com passo de 0,05 s;
+os desvios de segurança podem atrasar o encontro, sem garantia de tempo mínimo.
+
+`SAFETY_MARGIN = 2.0` define uma área de exclusão móvel de raio 12 m com a
+formação atual. Antes de comandar o movimento, o UAV verifica o próximo intervalo
+contra as posições futuras do centro. Se houver risco, contorna tangencialmente,
+mantendo o sentido escolhido e adicionando movimento para fora quando necessário.
+A telemetria também reavalia o risco nos dois modos. A verificação inclui folga
+para a atualização padrão de 0,01 s do handler de mobilidade.
+
+A margem deve ser menor que o afastamento de contato, que deve ser menor que o
+alcance. O UAV externo precisa ser mais rápido que o centro. As posições iniciais
+devem estar fora da área de exclusão; se já estiver dentro, o controle tenta sair
+radialmente, mas não pode desfazer uma invasão inicial. Não há prevenção de colisões
+entre os próprios externos.
 
 O contato é verificado a cada telemetria contra a posição prevista do alvo.
 Ao atingir a distância configurada, o UAV sorteia outro afastamento e reinicia

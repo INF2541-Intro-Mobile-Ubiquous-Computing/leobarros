@@ -1,4 +1,5 @@
 import math
+import random
 import unittest
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -13,6 +14,48 @@ import constants
 
 
 class ExternalMovementTest(unittest.TestCase):
+    def test_four_external_drones_stay_outside_moving_exclusion_area(self):
+        for seed in (7, 19, 41):
+            with self.subTest(seed=seed):
+                builder = SimulationBuilder(SimulationConfiguration(duration=60))
+                builder.add_handler(TimerHandler())
+                builder.add_handler(MobilityHandler())
+                for position, target in (((30, 0, 0), 0), ((-30, 0, 0), 2),
+                                         ((0, 30, 0), 4), ((0, -30, 0), 6)):
+                    builder.add_node(MovableExternalUAVProtocol.with_target(target), position)
+                contacts = set()
+                violations = []
+                original = MovableExternalUAVProtocol.handle_telemetry
+                rng = random.Random(seed)
+
+                def observe(drone, telemetry):
+                    now = drone.provider.current_time()
+                    radius = math.dist(telemetry.current_position[:2], drone.flight_plan.get_position(now)[:2])
+                    if radius < constants.FORMATION_RADIUS + constants.SAFETY_MARGIN:
+                        violations.append((now, drone.target_index, radius))
+                    previous_mode = drone.mode
+                    original(drone, telemetry)
+                    if previous_mode == 'seek' and drone.mode == 'away':
+                        contacts.add(drone.target_index)
+
+                with patch.object(MovableExternalUAVProtocol, 'handle_telemetry', observe), \
+                     patch('movable_external_uav_protocol.random.uniform', side_effect=rng.uniform):
+                    builder.build().start_simulation()
+                self.assertEqual(violations, [])
+                self.assertEqual(contacts, {0, 2, 4, 6})
+
+    def test_outside_contact_point_and_moving_center_path_check(self):
+        drone = self.make_drone()
+        point = drone.contact_position(2)
+        self.assertAlmostEqual(math.dist(point, drone.target_position(2)), constants.EXTERNAL_CONTACT_OFFSET)
+        self.assertAlmostEqual(math.dist(point, drone.flight_plan.get_position(2)),
+                               constants.FORMATION_RADIUS + constants.EXTERNAL_CONTACT_OFFSET)
+        drone.current_position = (13, 0, 0)
+        # O centro avança para leste: até ficar parado aqui seria inseguro.
+        self.assertFalse(drone.path_is_safe((13, 0, 0), 0))
+        drone.steer((-30, 0, 0), 0)
+        self.assertTrue(drone.path_is_safe(drone.destination, 0))
+
     def test_main_assigns_four_independent_targets_at_cardinal_positions(self):
         import main
         with patch.object(main, 'SimulationBuilder') as builder_class, \
@@ -55,21 +98,22 @@ class ExternalMovementTest(unittest.TestCase):
             drone.provider.current_time.return_value = 1
             drone.handle_telemetry(SimpleNamespace(current_position=(-54, 0, 0)))
             drone.handle_timer(constants.MOVEMENT_TIMER)
-            self.assertEqual(drone.provider.send_mobility_command.call_count, count)
+            self.assertGreater(drone.provider.send_mobility_command.call_count, count)
+            self.assertEqual(drone.away_direction, (-1.0, math.sin(math.pi), 0))
             draw.assert_called_once()
         self.assertEqual(drone.away_until, constants.EXTERNAL_AWAY_DURATION)
 
     def test_interception_uses_future_target_and_contact_radius(self):
         drone = self.make_drone()
         drone.current_position = (0, 0, 0)
-        # Alvo se afasta a 6 m/s: contato mais cedo em (100 - 5) / (24 - 6).
-        drone.target_position = Mock(side_effect=lambda t: (100 + 6 * t, 0, 0))
+        # Ponto externo se afasta a 6 m/s: encontro mais cedo em 100 / (24 - 6).
+        drone.contact_position = Mock(side_effect=lambda t: (100 + 6 * t, 0, 0))
         destination = drone.find_intercept(0)
-        delay = drone.target_position.call_args.args[0]
-        earliest = (100 - constants.EXTERNAL_CONTACT_DISTANCE) / (constants.EXTERNAL_SPEED - 6)
+        delay = drone.contact_position.call_args.args[0]
+        earliest = 100 / (constants.EXTERNAL_SPEED - 6)
         self.assertGreaterEqual(delay, earliest)
         self.assertLessEqual(delay - earliest, constants.EXTERNAL_INTERCEPT_STEP + 1e-9)
-        self.assertAlmostEqual(destination[0], 100 + 6 * delay - constants.EXTERNAL_CONTACT_DISTANCE)
+        self.assertAlmostEqual(destination[0], 100 + 6 * delay)
         self.assertLessEqual(math.dist(drone.current_position, destination), constants.EXTERNAL_SPEED * delay)
 
     def test_target_index_and_contact_without_touching(self):

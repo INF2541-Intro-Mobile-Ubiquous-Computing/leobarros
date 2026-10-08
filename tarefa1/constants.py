@@ -26,6 +26,8 @@ EXTERNAL_SPEED = 24.0  # m/s
 EXTERNAL_AWAY_DURATION = 5.0  # segundos simulados
 EXTERNAL_CONTACT_DISTANCE = 5.0  # metros
 EXTERNAL_INTERCEPT_STEP = 0.05  # resolução temporal da busca, em segundos
+SAFETY_MARGIN = 2.0  # área de exclusão: raio da formação + margem
+EXTERNAL_CONTACT_OFFSET = 3.0  # ponto de contato radialmente para fora do alvo
 
 # Cor do nó
 DEFAULT_COLOR = (0, 0, 0)
