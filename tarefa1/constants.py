@@ -16,6 +16,9 @@ ROTATION_SPEED = 6.0  # m/s tangenciais; negativo inverte a rotação.
 FORMATION_RADIUS = 10
 ANGULAR_SPEED = math.degrees(ROTATION_SPEED / FORMATION_RADIUS)  # graus/s
 DRONE_COUNT = 9
+# Índices próprios dos externos, independentes dos IDs globais do simulador.
+EXTERNAL_CORE_TARGETS = {0: 0, 1: 2, 2: 4, 3: 6}
+EXTERNAL_DESTINATIONS = {0: 1, 1: 0, 2: 3, 3: 2}
 # Velocidade para alcançar os alvos, com 20% de margem sobre a referência máxima.
 MOVEMENT_SPEED = 1.2 * (CENTER_SPEED + abs(ROTATION_SPEED))
 REAL_TIME = 1.0  # 1: tempo real; 0.5: meia velocidade; 2: dobro da velocidade.
@@ -25,6 +28,9 @@ EXTERNAL_TARGET_INDEX = 0
 EXTERNAL_SPEED = 24.0  # m/s
 EXTERNAL_AWAY_DURATION = 5.0  # segundos simulados
 EXTERNAL_CONTACT_DISTANCE = 5.0  # metros
+# Corda entre vizinhos + folga para o acompanhamento discreto da formação.
+RADIO_RANGE = max(EXTERNAL_CONTACT_DISTANCE,
+                  2 * FORMATION_RADIUS * math.sin(math.pi / DRONE_COUNT)) + 3.0
 EXTERNAL_INTERCEPT_STEP = 0.05  # resolução temporal da busca, em segundos
 SAFETY_MARGIN = 2.0  # área de exclusão: raio da formação + margem
 EXTERNAL_CONTACT_OFFSET = 3.0  # ponto de contato radialmente para fora do alvo

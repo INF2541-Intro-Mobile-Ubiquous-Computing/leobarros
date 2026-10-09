@@ -8,8 +8,10 @@
 
 `main.py` adiciona quatro UAVs externos, depois dos membros do core, a 30 m do
 centro inicial: leste (alvo 0), oeste (alvo 2), norte (alvo 4) e sul (alvo 6).
-Cada classe configurada por `MovableExternalUAVProtocol.with_target(index)`
-mantém seu próprio alvo; posições e alvos são definidos na lista `external_drones`.
+Cada classe configurada por `CommunicableUAVProtocol.with_external(index)`
+usa um índice externo próprio (0 a 3), independente do ID global (9 a 12).
+As posições ficam na lista `external_drones`; os alvos são consultados no plano de
+voo, a partir de `EXTERNAL_CORE_TARGETS` em `constants.py`.
 `MovableExternalUAVProtocol` cuida do movimento, sem enviar mensagens.
 A posição inicial é recebida pela telemetria do próprio UAV.
 
@@ -50,6 +52,32 @@ Ao atingir a distância configurada, o UAV sorteia outro afastamento e reinicia
 o ciclo. Não é necessário aguardar confirmação nem encostar no alvo.
 ### Para executar
 python main.py
+
+### Comunicação pelo core
+
+`EXTERNAL_CORE_TARGETS = {0: 0, 1: 2, 2: 4, 3: 6}` associa cada externo ao
+seu nó de encontro. Mobilidade e retransmissão consultam a mesma configuração
+através de `FlightPlan.get_core_target`. `EXTERNAL_DESTINATIONS` define os pares
+fixos `0 ↔ 1` e `2 ↔ 3`.
+
+Ao encontrar seu alvo, o externo envia um JSON com `message_id` (índice externo
+e sequência local), `source_external_index`, `destination_external_index` e
+`payload`. Cada encontro gera uma nova mensagem antes do afastamento.
+
+Os nove membros do core usam `MessageTransmitterUAVProtocol`. Cada receptor
+consulta no plano o alvo do destinatário externo e encaminha apenas ao vizinho
+que reduz o número de saltos no anel. Exemplos: `2 → 3 → 4` e `2 → 1 → 0 → 8`.
+Em empate, prefere índices crescentes. O core alvo registra a chegada e encerra;
+a entrega ao externo destinatário ainda não faz parte desta etapa. Mensagens
+inválidas e índices externos desconhecidos são descartados com log de aviso.
+
+`RADIO_RANGE` cobre a corda entre vizinhos com 3 m de folga (aproximadamente
+9,84 m na configuração atual). O contato dos externos continua em 5 m.
+O envio é unicast ao vizinho escolhido, mesmo se outros nós estiverem no alcance.
+A folga é validada pelos cenários de teste, mas não constitui garantia para
+qualquer configuração de mobilidade. Não há confirmação, fila ou retransmissão
+automática em caso de perda de rádio. Os logs identificam o envio, cada salto e
+o recebimento final.
 
 ### Para executar os testes unitários
 python -m unittest discover -s . -p "test_*.py" -v

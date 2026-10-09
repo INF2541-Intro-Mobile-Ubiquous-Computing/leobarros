@@ -1,6 +1,7 @@
 import math
 from bisect import bisect_right
 from itertools import accumulate
+from types import MappingProxyType
 
 
 '''
@@ -14,7 +15,16 @@ class FlightPlan:
     # points: lista de coordenadas
     # speed: velocidade constante do centro em m/s
     '''
-    def __init__(self, points, speed):
+    def __init__(self, points, speed, external_targets=None, core_count=None):
+        targets = dict(external_targets or {})
+        if targets and (type(core_count) is not int or core_count <= 0):
+            raise ValueError('Informe a quantidade de nós do core para validar os alvos.')
+        for external, target in targets.items():
+            if type(external) is not int or external < 0:
+                raise ValueError('Índice externo deve ser inteiro não negativo.')
+            if type(target) is not int or not 0 <= target < core_count:
+                raise ValueError('Índice do alvo externo fora do core.')
+        self.external_targets = MappingProxyType(targets)
         if not math.isfinite(speed) or speed <= 0:
             raise ValueError('A velocidade do centro deve ser positiva e finita.')
         self.points = tuple(tuple(point) for point in points)
@@ -33,6 +43,12 @@ class FlightPlan:
         self.cycle_duration = self.segment_end_times[-1]
         if self.cycle_duration == 0:
             raise ValueError('O plano deve conter pelo menos dois pontos distintos.')
+
+    def get_core_target(self, external_index):
+        """Consulta o ponto de encontro do externo; rejeita índices desconhecidos."""
+        if type(external_index) is not int or external_index not in self.external_targets:
+            raise ValueError(f'Índice externo desconhecido: {external_index!r}')
+        return self.external_targets[external_index]
 
     '''
     Retorna a posição interpolada do centro virtual no instante t ao longo do plano de vôo

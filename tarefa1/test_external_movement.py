@@ -63,6 +63,8 @@ class ExternalMovementTest(unittest.TestCase):
             main.main()
         calls = builder_class.return_value.add_node.call_args_list
         self.assertEqual(len(calls), constants.DRONE_COUNT + 4)
+        self.assertTrue(all(call.args[0] is main.MessageTransmitterUAVProtocol
+                            for call in calls[:constants.DRONE_COUNT]))
         center = constants.FLIGHT_PLAN_POINTS[0]
         assignments = (((30, 0, 0), 0), ((-30, 0, 0), 2),
                        ((0, 30, 0), 4), ((0, -30, 0), 6))
@@ -77,6 +79,8 @@ class ExternalMovementTest(unittest.TestCase):
             self.assertEqual(drone.target_index, target)
             drones.append(drone)
         self.assertEqual([drone.target_index for drone in drones], [0, 2, 4, 6])
+        self.assertEqual([drone.external_index for drone in drones], [0, 1, 2, 3])
+        self.assertEqual([drone.destination_external_index for drone in drones], [1, 0, 3, 2])
 
     def make_drone(self):
         drone = MovableExternalUAVProtocol()

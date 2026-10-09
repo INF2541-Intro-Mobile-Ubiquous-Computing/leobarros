@@ -8,6 +8,7 @@ import constants
 class MovableExternalUAVProtocol (VisibleNodeProtocol):
 
     target_index = None
+    external_index = None
 
     @classmethod
     def with_target(cls, index):
@@ -18,6 +19,11 @@ class MovableExternalUAVProtocol (VisibleNodeProtocol):
         return ConfiguredExternalUAV
 
     def initialize(self):
+        self.flight_plan = FlightPlan(
+            constants.FLIGHT_PLAN_POINTS, constants.CENTER_SPEED,
+            constants.EXTERNAL_CORE_TARGETS, constants.DRONE_COUNT)
+        if self.external_index is not None:
+            self.target_index = self.flight_plan.get_core_target(self.external_index)
         if self.target_index is None:
             self.target_index = constants.EXTERNAL_TARGET_INDEX
         self.color = constants.PAIR_COLORS.get(self.target_index, constants.DEFAULT_COLOR)
@@ -28,7 +34,6 @@ class MovableExternalUAVProtocol (VisibleNodeProtocol):
                       constants.EXTERNAL_CONTACT_DISTANCE, constants.EXTERNAL_INTERCEPT_STEP):
             if not math.isfinite(value) or value <= 0:
                 raise ValueError('Os parâmetros de movimento externo devem ser positivos e finitos.')
-        self.flight_plan = FlightPlan(constants.FLIGHT_PLAN_POINTS, constants.CENTER_SPEED)
         if not 0 < constants.SAFETY_MARGIN < constants.EXTERNAL_CONTACT_OFFSET < constants.EXTERNAL_CONTACT_DISTANCE:
             raise ValueError('Use 0 < margem de segurança < afastamento de contato < alcance de contato.')
         if constants.EXTERNAL_SPEED <= constants.CENTER_SPEED:

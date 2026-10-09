@@ -15,7 +15,8 @@ class MovableCoreUAVProtocol (VisibleNodeProtocol):
         self.color = constants.PAIR_COLORS.get(self.provider.get_id(), constants.DEFAULT_COLOR)
         super().initialize()
         self.flight_plan = FlightPlan(
-            list(constants.FLIGHT_PLAN_POINTS), constants.CENTER_SPEED
+            list(constants.FLIGHT_PLAN_POINTS), constants.CENTER_SPEED,
+            constants.EXTERNAL_CORE_TARGETS, constants.DRONE_COUNT
         )
         # Estou contando que main.py adicione os drones em ordem, com IDs de 0 a DRONE_COUNT - 1.
         self.initial_angle = self.provider.get_id() * 360 / constants.DRONE_COUNT
