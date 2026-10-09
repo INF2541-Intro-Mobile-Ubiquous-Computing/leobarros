@@ -1,8 +1,9 @@
 from gradysim.simulator.simulation import SimulationBuilder, SimulationConfiguration
 from gradysim.simulator.handler.timer import TimerHandler
 from gradysim.simulator.handler.mobility import MobilityHandler
+from gradysim.simulator.handler.communication import CommunicationHandler, CommunicationMedium
 from movable_core_uav_protocol import MovableCoreUAVProtocol
-from movable_external_uav_protocol import MovableExternalUAVProtocol
+from communicable_uav_protocol import CommunicableUAVProtocol
 from flight_plan import FlightPlan
 from real_time_handler import RealTimeHandler, PacedVisualizationHandler
 import constants
@@ -16,7 +17,7 @@ def main():
     )
     config = SimulationConfiguration(
         # O handler abaixo controla o ritmo, evitando as esperas relativas do simulador.
-        duration=flight_plan.cycle_duration * 5, real_time=False
+        duration=flight_plan.cycle_duration * 4, real_time=False
     )
     builder = SimulationBuilder(config)
     center = flight_plan.get_position(0)
@@ -36,9 +37,12 @@ def main():
     )
     for offset, target_index in external_drones:
         position = tuple(c + d for c, d in zip(center, offset))
-        builder.add_node(MovableExternalUAVProtocol.with_target(target_index), position)
+        builder.add_node(CommunicableUAVProtocol.with_target(target_index), position)
 
     builder.add_handler(TimerHandler())
+    builder.add_handler(CommunicationHandler(CommunicationMedium(
+        transmission_range=constants.EXTERNAL_CONTACT_DISTANCE
+    )))
     builder.add_handler(MobilityHandler())
     pacer = RealTimeHandler(constants.REAL_TIME)
     builder.add_handler(PacedVisualizationHandler(pacer))
