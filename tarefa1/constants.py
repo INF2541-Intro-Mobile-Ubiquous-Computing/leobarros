@@ -1,5 +1,8 @@
 import math
 
+# Nível mínimo: DEBUG, INFO, WARNING, ERROR ou CRITICAL.
+LOG_LEVEL = 'INFO'
+
 # Timers
 REPAINT_TIMER = "repaint"
 RESTORE_COLOR_TIMER = "restore_color"

@@ -93,6 +93,27 @@ class ContactExchangeTest(unittest.TestCase):
         self.receive_core(self.control())
         self.assertEqual(self.last_core_packet()['type'], 'contact_complete')
 
+    def test_external_color_lasts_one_second_even_after_departure(self):
+        original_color = self.external.color
+        self.receive_core(self.data())
+        self.external.start_away(0)
+        self.receive_core(self.control())
+        self.external.provider.current_time.return_value = 0.25
+        self.external.handle_packet(json.dumps(self.last_core_packet()))
+        self.assertEqual(self.external.currentColor, tuple(self.data()['source_color']))
+        self.assertEqual(self.external.color, original_color)
+        self.external.provider.schedule_timer.assert_called_with(constants.RESTORE_COLOR_TIMER, 1.25)
+        ack = json.loads(self.external.provider.send_communication_command.call_args.args[0].message)
+        self.receive_core(ack)
+        self.external.handle_packet(json.dumps(self.last_core_packet()))
+        self.assertEqual(self.external.mode, 'away')
+        self.external.provider.current_time.return_value = 1.0
+        self.external.handle_timer(constants.REPAINT_TIMER)
+        self.assertEqual(self.external.currentColor, tuple(self.data()['source_color']))
+        self.external.provider.current_time.return_value = 1.25
+        self.external.handle_timer(constants.RESTORE_COLOR_TIMER)
+        self.assertEqual(self.external.currentColor, original_color)
+
     def test_empty_queue_completes_contact(self):
         self.external.start_away(0)
         self.receive_core(self.control())

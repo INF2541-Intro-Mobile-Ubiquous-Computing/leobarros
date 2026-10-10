@@ -50,7 +50,7 @@ class MessageRoutingTest(unittest.TestCase):
                 message = self.packet()
                 for index, current in enumerate(route):
                     node = self.core(current, plan)
-                    with self.assertLogs(level='INFO') as logs:
+                    with self.assertLogs(level='DEBUG') as logs:
                         node.handle_packet(message)
                     self.assertEqual(node.currentColor,
                                      constants.PAIR_COLORS.get(route[0], constants.DEFAULT_COLOR))
@@ -187,7 +187,7 @@ class MessageRoutingTest(unittest.TestCase):
                 rng = random.Random(seed)
                 with patch.object(MessageTransmitterUAVProtocol, 'handle_packet', receive), \
                      patch('movable_external_uav_protocol.random.uniform', side_effect=rng.uniform), \
-                     patch('message_transmitter_uav_protocol.logging.info', side_effect=observe_log):
+                     patch('message_transmitter_uav_protocol.logging.debug', side_effect=observe_log):
                     builder.build().start_simulation()
                 self.assertEqual({p['source_external_index'] for p in sent.values()}, {0, 1, 2, 3})
                 self.assertCountEqual(delivered, sent.keys())

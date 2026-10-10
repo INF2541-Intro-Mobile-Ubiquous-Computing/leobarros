@@ -75,7 +75,7 @@ class CommunicableUAVProtocol(MovableExternalUAVProtocol):
             if self.mode != 'contact':
                 return
             if now >= self.contact_until:
-                logging.info('Tempo de contato esgotado para externo %s', self.external_index)
+                logging.debug('Tempo de contato esgotado para externo %s', self.external_index)
                 super().start_away(now)
             elif now >= self.next_presence_at:
                 if self.in_contact(now):
@@ -108,16 +108,17 @@ class CommunicableUAVProtocol(MovableExternalUAVProtocol):
                 super().start_away(self.provider.current_time())
                 return
             packet = response.get('packet')
-            validate_data_packet(packet, self.flight_plan)
+            _, source_color = validate_data_packet(packet, self.flight_plan)
             if packet['destination_external_index'] != self.external_index:
                 raise ValueError('Entrega dirigida a outro externo.')
         except (ValueError, TypeError) as error:
             logging.warning('Mensagem descartada no externo %s: %s', self.external_index, error)
             return
+        self.show_message_color(source_color)
         message_id = packet['message_id']
         if message_id not in self.received_messages:
             self.received_messages[message_id] = packet
-            logging.info('Mensagem %s entregue ao externo %s; conteúdo: %s',
+            logging.info('Mensagem %s recebida no externo %s; conteúdo: %s',
                          message_id, self.external_index, packet['payload'])
         # Confirma também as retransmissões, caso o ACK anterior tenha se perdido.
         self.send_contact_packet('ack', message_id=message_id)

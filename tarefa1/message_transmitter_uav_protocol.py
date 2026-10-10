@@ -36,7 +36,7 @@ class MessageTransmitterUAVProtocol(MovableCoreUAVProtocol):
         if node_index == destination:
             if packet['message_id'] not in self.confirmed_messages:
                 self.pending_messages.setdefault(packet['message_id'], packet)
-            logging.info('Mensagem %s recebida no core alvo %s: externo %s -> externo %s; conteúdo: %s',
+            logging.debug('Mensagem %s recebida no core alvo %s: externo %s -> externo %s; conteúdo: %s',
                          packet['message_id'], node_index, packet['source_external_index'],
                          packet['destination_external_index'], packet['payload'])
             return
@@ -46,7 +46,7 @@ class MessageTransmitterUAVProtocol(MovableCoreUAVProtocol):
         # Em empate (core par), prefere índices crescentes.
         step = 1 if increasing <= decreasing else -1
         next_hop = (node_index + step) % constants.DRONE_COUNT
-        logging.info('Mensagem %s no core %s: encaminhando para %s, alvo final %s',
+        logging.debug('Mensagem %s no core %s: encaminhando para %s, alvo final %s',
                      packet['message_id'], node_index, next_hop, destination)
         self.provider.send_communication_command(CommunicationCommand(
             CommunicationCommandType.SEND, message, next_hop
@@ -80,7 +80,7 @@ class MessageTransmitterUAVProtocol(MovableCoreUAVProtocol):
                 return
             del self.pending_messages[message_id]
             self.confirmed_messages.add(message_id)
-            logging.info('Mensagem %s confirmada pelo externo %s', message_id, external)
+            logging.debug('Mensagem %s confirmada pelo externo %s', message_id, external)
             if not any(p['destination_external_index'] == external
                        for p in self.pending_messages.values()):
                 self.send_contact_response('contact_complete', external, contact)

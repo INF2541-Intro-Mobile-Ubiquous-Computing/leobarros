@@ -89,6 +89,9 @@ Mensagens repetidas são confirmadas novamente sem nova entrega à aplicação.
 Respostas de sessões antigas são ignoradas. Após 2 s, o externo se afasta mesmo
 sem resposta; mensagens não confirmadas ficam no core para o próximo encontro.
 Mensagens que chegam ao core depois do encerramento aguardam um encontro futuro.
+Ao receber uma entrega, o externo também assume a cor do remetente por um segundo
+simulado. O destaque dura esse segundo mesmo que o afastamento já tenha começado;
+depois, a cor normal é restaurada. Um novo recebimento reinicia esse intervalo.
 
 `RADIO_RANGE` cobre a corda entre vizinhos com 3 m de folga (aproximadamente
 9,84 m na configuração atual). O contato dos externos continua em 5 m.
@@ -103,6 +106,21 @@ e sua confirmação.
 
 ### Para executar os testes unitários
 python -m unittest discover -s . -p "test_*.py" -v
+
+### Logs
+
+Por padrão, `LOG_LEVEL = 'INFO'` em `constants.py`. Nos protocolos, apenas o
+envio inicial e o recebimento final em `CommunicableUAVProtocol` usam `INFO`.
+Encaminhamento, chegada ao core, confirmação e tempo de contato esgotado usam
+`DEBUG`. Avisos de mensagens inválidas continuam em `WARNING`.
+
+O nível é hierárquico: `'DEBUG'` exibe todos os detalhes; `'INFO'` omite DEBUG;
+`'WARNING'` exibe apenas avisos e erros; `'ERROR'` exibe erros e registros críticos;
+`'CRITICAL'` exibe apenas registros críticos. Para alterar, ajuste `LOG_LEVEL`
+e reinicie `python main.py`. O nível `'DEBUG'` também ativa os detalhes do simulador.
+`execution_logging` permanece habilitado nos dois modos, pois desativá-lo
+faz o simulador ocultar também os registros `INFO` durante a execução.
+O próprio simulador ainda pode emitir seus registros de início/fim em `INFO`.
 
 ### Velocidades e exibição
 

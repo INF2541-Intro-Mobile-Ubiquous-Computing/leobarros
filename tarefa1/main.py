@@ -1,3 +1,5 @@
+import logging
+
 from gradysim.simulator.simulation import SimulationBuilder, SimulationConfiguration
 from gradysim.simulator.handler.timer import TimerHandler
 from gradysim.simulator.handler.mobility import MobilityHandler
@@ -12,13 +14,17 @@ import constants
 Cria 'DRONE_COUNT' drones em formação de círculo e atribui a eles um plano de vôo.
 '''
 def main():
+    logger = logging.getLogger()
+    logger.setLevel(constants.LOG_LEVEL)
     flight_plan = FlightPlan(
         list(constants.FLIGHT_PLAN_POINTS), constants.CENTER_SPEED,
         constants.EXTERNAL_CORE_TARGETS, constants.DRONE_COUNT
     )
     config = SimulationConfiguration(
         # O handler abaixo controla o ritmo, evitando as esperas relativas do simulador.
-        duration=flight_plan.cycle_duration * 4, real_time=False
+        duration=flight_plan.cycle_duration * 4, real_time=False,
+        # Desativar execution_logging suprime também INFO durante a simulação.
+        debug=logger.isEnabledFor(logging.DEBUG), execution_logging=True
     )
     builder = SimulationBuilder(config)
     center = flight_plan.get_position(0)
@@ -50,6 +56,8 @@ def main():
     builder.add_handler(pacer)
 
     simulation = builder.build()
+    # O builder redefine o nível para INFO/DEBUG; reaplica também WARNING e superiores.
+    logger.setLevel(constants.LOG_LEVEL)
     simulation.start_simulation()
 
 if __name__ == "__main__":
