@@ -14,6 +14,27 @@ import constants
 
 
 class ExternalMovementTest(unittest.TestCase):
+    def setUp(self):
+        mode = patch.object(constants, 'SIMULATION_MODE', constants.TOPOLOGY)
+        mode.start()
+        self.addCleanup(mode.stop)
+
+    def test_random_mode_allows_crossing_circle_and_contact_inside(self):
+        with patch.object(constants, 'SIMULATION_MODE', constants.RANDOM):
+            drone = self.make_drone()
+            drone.current_position = (-13, 0, 0)
+            destination = (13, 0, 0)
+            drone.steer(destination, 0)
+            self.assertEqual(drone.destination, destination)
+            self.assertIsNone(drone.contour_direction)
+            command = drone.provider.send_mobility_command.call_args.args[0]
+            self.assertEqual((command.param_1, command.param_2, command.param_3), destination)
+            self.assertEqual(drone.contact_position(0), drone.target_position(0))
+            drone.current_position = (constants.FORMATION_RADIUS - 1, 0, 0)
+            self.assertTrue(drone.in_contact(0))
+            drone.current_position = (0, 0, 0)
+            self.assertFalse(drone.in_contact(0))
+
     def test_four_external_drones_stay_outside_moving_exclusion_area(self):
         for seed in (7, 19, 41):
             with self.subTest(seed=seed):

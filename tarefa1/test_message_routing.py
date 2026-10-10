@@ -15,9 +15,15 @@ from flight_plan import FlightPlan
 from message_transmitter_uav_protocol import MessageTransmitterUAVProtocol
 from movable_external_uav_protocol import MovableExternalUAVProtocol
 from visible_node_protocol import VisibleNodeProtocol
+from gradysim.protocol.messages.communication import CommunicationCommandType
 
 
 class MessageRoutingTest(unittest.TestCase):
+    def setUp(self):
+        mode = patch.object(constants, 'SIMULATION_MODE', constants.TOPOLOGY)
+        mode.start()
+        self.addCleanup(mode.stop)
+
     def plan(self, targets=None, count=9):
         return FlightPlan(constants.FLIGHT_PLAN_POINTS, constants.CENTER_SPEED,
                           targets if targets is not None else constants.EXTERNAL_CORE_TARGETS, count)
@@ -36,11 +42,27 @@ class MessageRoutingTest(unittest.TestCase):
         node.pending_messages = {}
         node.confirmed_messages = set()
         node.contacts = {}
+        node.seen_messages = set()
         node.color = constants.PAIR_COLORS.get(index, constants.DEFAULT_COLOR)
         with patch('visible_node_protocol.VisualizationController'):
             VisibleNodeProtocol.initialize(node)
         node.flight_plan = plan
         return node
+
+    def test_random_broadcasts_once_per_node_and_stops_at_target(self):
+        with patch.object(constants, 'SIMULATION_MODE', constants.RANDOM):
+            for index in (0, 1, 2):
+                node = self.core(index, self.plan())
+                node.handle_packet(self.packet())
+                node.handle_packet(self.packet())
+                if index == 2:
+                    node.provider.send_communication_command.assert_not_called()
+                    self.assertEqual(len(node.pending_messages), 1)
+                else:
+                    node.provider.send_communication_command.assert_called_once()
+                    command = node.provider.send_communication_command.call_args.args[0]
+                    self.assertEqual(command.command_type, CommunicationCommandType.BROADCAST)
+                    self.assertIsNone(command.destination)
 
     def test_routes_and_stop_at_target(self):
         for count, route in ((9, [2, 3, 4]), (9, [2, 1, 0, 8]),

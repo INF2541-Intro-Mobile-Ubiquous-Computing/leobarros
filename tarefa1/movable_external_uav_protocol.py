@@ -34,7 +34,8 @@ class MovableExternalUAVProtocol (VisibleNodeProtocol):
                       constants.EXTERNAL_CONTACT_DISTANCE, constants.EXTERNAL_INTERCEPT_STEP):
             if not math.isfinite(value) or value <= 0:
                 raise ValueError('Os parâmetros de movimento externo devem ser positivos e finitos.')
-        if not 0 < constants.SAFETY_MARGIN < constants.EXTERNAL_CONTACT_OFFSET < constants.EXTERNAL_CONTACT_DISTANCE:
+        if (constants.SIMULATION_MODE != constants.RANDOM
+                and not 0 < constants.SAFETY_MARGIN < constants.EXTERNAL_CONTACT_OFFSET < constants.EXTERNAL_CONTACT_DISTANCE):
             raise ValueError('Use 0 < margem de segurança < afastamento de contato < alcance de contato.')
         if constants.EXTERNAL_SPEED <= constants.CENTER_SPEED:
             raise ValueError('O UAV externo deve ser mais rápido que o centro para conseguir se afastar.')
@@ -102,11 +103,15 @@ class MovableExternalUAVProtocol (VisibleNodeProtocol):
         return FlightPlan.position_on_circle(center, constants.FORMATION_RADIUS, angle)
 
     def in_contact(self, now):
-        return (math.dist(self.current_position[:2], self.flight_plan.get_position(now)[:2]) >=
-                constants.FORMATION_RADIUS + constants.SAFETY_MARGIN and
-                math.dist(self.current_position, self.target_position(now)) <= constants.EXTERNAL_CONTACT_DISTANCE)
+        within_range = math.dist(self.current_position, self.target_position(now)) <= constants.EXTERNAL_CONTACT_DISTANCE
+        if constants.SIMULATION_MODE == constants.RANDOM:
+            return within_range
+        return (within_range and math.dist(self.current_position[:2], self.flight_plan.get_position(now)[:2]) >=
+                constants.FORMATION_RADIUS + constants.SAFETY_MARGIN)
 
     def contact_position(self, time):
+        if constants.SIMULATION_MODE == constants.RANDOM:
+            return self.target_position(time)
         center = self.flight_plan.get_position(time)
         angle = self.target_index * 360 / constants.DRONE_COUNT + constants.ANGULAR_SPEED * time
         return FlightPlan.position_on_circle(
@@ -128,6 +133,8 @@ class MovableExternalUAVProtocol (VisibleNodeProtocol):
         A folga cobre a amostragem de 0,01 s e uma telemetria de mobilidade atrasada
         em até 0,01 s (intervalo padrão do MobilityHandler deste projeto).
         """
+        if constants.SIMULATION_MODE == constants.RANDOM:
+            return True
         step = 0.01
         horizon = constants.MOVEMENT_INTERVAL + step
         radius = constants.FORMATION_RADIUS + constants.SAFETY_MARGIN

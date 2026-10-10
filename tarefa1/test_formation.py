@@ -12,6 +12,11 @@ from movable_core_uav_protocol import MovableCoreUAVProtocol
 
 
 class FormationTest(unittest.TestCase):
+    def setUp(self):
+        mode = patch.object(constants, 'SIMULATION_MODE', constants.TOPOLOGY)
+        mode.start()
+        self.addCleanup(mode.stop)
+
     def test_center_keeps_speed_on_unequal_segments_and_closes_cycle(self):
         points = ((-50, 50, 0), (-50, -50, 0), (50, 50, 0), (50, -50, 0))
         plan = FlightPlan(points, speed=3)

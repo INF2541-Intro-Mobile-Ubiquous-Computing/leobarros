@@ -6,10 +6,11 @@ from gradysim.protocol.messages.communication import CommunicationCommand, Commu
 
 from movable_external_uav_protocol import MovableExternalUAVProtocol
 from communication_packets import validate_data_packet
+from radio_discovery import RadioDiscoveryMixin, DISCOVERY_TYPES
 import constants
 
 
-class CommunicableUAVProtocol(MovableExternalUAVProtocol):
+class CommunicableUAVProtocol(RadioDiscoveryMixin, MovableExternalUAVProtocol):
     """Envia e recebe mensagens no encontro, aguardando a troca antes de partir."""
 
     @classmethod
@@ -20,6 +21,7 @@ class CommunicableUAVProtocol(MovableExternalUAVProtocol):
         return ConfiguredExternalUAV
 
     def initialize(self):
+        self.initialize_discovery()
         if self.external_index not in constants.EXTERNAL_DESTINATIONS:
             raise ValueError('Configure o índice externo e seu destinatário fixo.')
         self.destination_external_index = constants.EXTERNAL_DESTINATIONS[self.external_index]
@@ -35,6 +37,9 @@ class CommunicableUAVProtocol(MovableExternalUAVProtocol):
         if self.mode == 'contact':
             return
         if self.in_contact(now):
+            if constants.SIMULATION_MODE == constants.RANDOM and not self.radio_contact_confirmed:
+                self.begin_discovery(now)
+                return
             self.message_sequence += 1
             self.mode = 'contact'
             self.record_metric('contact_started', external_index=self.external_index,
@@ -76,6 +81,8 @@ class CommunicableUAVProtocol(MovableExternalUAVProtocol):
 
     def handle_timer(self, timer):
         now = self.provider.current_time()
+        if constants.SIMULATION_MODE == constants.RANDOM and self.discovery_timer(timer, now):
+            return
         if timer == constants.CONTACT_TIMER:
             if self.mode != 'contact':
                 return
@@ -83,6 +90,8 @@ class CommunicableUAVProtocol(MovableExternalUAVProtocol):
                 self.record_metric('contact_timeout', external_index=self.external_index,
                                    session_id=self.message_sequence)
                 logging.debug('Tempo de contato esgotado para externo %s', self.external_index)
+                self.radio_contact_confirmed = False
+                self.mini_plan = None
                 super().start_away(now)
             elif now >= self.next_presence_at:
                 if self.in_contact(now):
@@ -101,6 +110,15 @@ class CommunicableUAVProtocol(MovableExternalUAVProtocol):
     def handle_packet(self, message):
         try:
             response = json.loads(message)
+            if (constants.SIMULATION_MODE == constants.RANDOM and isinstance(response, dict)
+                    and response.get('type') in DISCOVERY_TYPES):
+                self.handle_discovery(response)
+                return
+            if (constants.SIMULATION_MODE == constants.RANDOM and isinstance(response, dict)
+                    and response.get('type', 'data') == 'data'):
+                # Ouvir o broadcast do core não substitui a entrega confirmada no encontro.
+                validate_data_packet(response, self.flight_plan)
+                return
             if not isinstance(response, dict) or response.get('type') not in ('delivery', 'contact_complete'):
                 raise ValueError('Resposta de contato inválida.')
             if (type(response.get('external_index')) is not int
@@ -114,6 +132,8 @@ class CommunicableUAVProtocol(MovableExternalUAVProtocol):
             if response['type'] == 'contact_complete':
                 self.record_metric('contact_completed', external_index=self.external_index,
                                    session_id=self.message_sequence)
+                self.radio_contact_confirmed = False
+                self.mini_plan = None
                 super().start_away(self.provider.current_time())
                 return
             packet = response.get('packet')

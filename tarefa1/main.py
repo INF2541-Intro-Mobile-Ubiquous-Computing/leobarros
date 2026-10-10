@@ -2,7 +2,7 @@ import logging
 
 from gradysim.simulator.simulation import SimulationBuilder, SimulationConfiguration
 from gradysim.simulator.handler.timer import TimerHandler
-from gradysim.simulator.handler.mobility import MobilityHandler
+from gradysim.simulator.handler.mobility import MobilityHandler, MobilityConfiguration
 from gradysim.simulator.handler.communication import CommunicationHandler, CommunicationMedium
 from message_transmitter_uav_protocol import MessageTransmitterUAVProtocol
 from communicable_uav_protocol import CommunicableUAVProtocol
@@ -15,6 +15,8 @@ import constants
 Cria 'DRONE_COUNT' drones em formação de círculo e atribui a eles um plano de vôo.
 '''
 def main():
+    if constants.SIMULATION_MODE not in (constants.TOPOLOGY, constants.RANDOM):
+        raise ValueError('SIMULATION_MODE deve ser TOPOLOGY ou RANDOM.')
     logger = logging.getLogger()
     logger.setLevel(constants.LOG_LEVEL)
     flight_plan = FlightPlan(
@@ -51,7 +53,9 @@ def main():
     builder.add_handler(CommunicationHandler(CommunicationMedium(
         transmission_range=constants.RADIO_RANGE
     )))
-    builder.add_handler(MobilityHandler())
+    builder.add_handler(MobilityHandler(MobilityConfiguration(
+        update_rate=constants.RANDOM_MOVEMENT_INTERVAL
+    )) if constants.SIMULATION_MODE == constants.RANDOM else MobilityHandler())
     pacer = RealTimeHandler(constants.REAL_TIME)
     builder.add_handler(PacedVisualizationHandler(pacer))
     builder.add_handler(pacer)

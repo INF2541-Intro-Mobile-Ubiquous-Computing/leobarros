@@ -29,6 +29,7 @@ class SimulationLoggingTest(unittest.TestCase):
                     report = io.StringIO()
                     rng = random.Random(19)
                     with patch.object(constants, 'LOG_LEVEL', level), \
+                         patch.object(constants, 'SIMULATION_MODE', constants.TOPOLOGY), \
                          patch.object(root, 'handlers', []), \
                          patch('sys.stderr', output), \
                          patch('sys.stdout', report), \

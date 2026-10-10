@@ -4,6 +4,61 @@
 
 ## Tarefa 1
 
+### Modos de movimento do core
+
+Configure `SIMULATION_MODE` em `constants.py` e reinicie a simulação:
+
+- `SIMULATION_MODE = TOPOLOGY`: comportamento original, mantendo a formação
+  circular com translação e rotação.
+- `SIMULATION_MODE = RANDOM`: mesma formação inicial, mas cada nó voa no interior
+  do disco com direção independente, sorteada a cada segundo simulado e também
+  ao atingir a borda. Na borda, o sorteio aponta para dentro. O círculo continua
+  acompanhando o centro do plano de voo, com a mesma altitude.
+
+`RANDOM_SPEED` define a velocidade relativa ao centro; `RANDOM_DIRECTION_INTERVAL`
+define o intervalo de sorteio (1 s). A translação do centro é somada ao movimento.
+`RANDOM_MOVEMENT_INTERVAL` sincroniza comandos e atualizações físicas (0,01 s),
+para manter as posições dentro do disco também nas curvas do plano de voo.
+
+No modo RANDOM, os externos podem atravessar o círculo: não há teste de área de
+exclusão nem desvio de colisão, e o ponto de contato não recebe o afastamento
+radial de segurança. O contato é confirmado por uma troca direta de mensagens.
+As regras de segurança continuam ativas no modo TOPOLOGY.
+
+No modo RANDOM, o externo aproxima-se da posição nominal do alvo no plano comum.
+Ao chegar à distância de contato desse ponto, transmite `position_request` em
+broadcast. Cada nó do core retransmite a consulta uma vez, até seu prazo expirar.
+O alvo responde com `position_plan`, também disseminado por broadcast com controle
+de duplicatas. Não há consulta a posições de outros nós no simulador.
+
+O mini plano contém instante de referência, posição relativa ao centro, velocidade
+relativa e validade até o próximo sorteio de direção ou encontro com a borda,
+o que ocorrer primeiro. O externo combina esse trecho com o plano comum e procura
+um ponto alcançável antes da expiração. Os nós usam o relógio simulado comum;
+não se modelam erros de GPS ou de sincronização. O plano descreve somente o trecho
+já decidido, sem sortear nem antecipar novos rumos para responder à consulta.
+
+Ao aproximar-se do ponto previsto, o externo envia `contact_probe` diretamente ao
+alvo. Só uma resposta direta `contact_ready`, recebida dentro do prazo, autoriza
+a emissão dos dados e a troca de presença/entrega/ACK. Essa confirmação não é
+retransmitida pelo core: uma resposta vinda por múltiplos saltos não prova contato.
+Broadcasts ou mensagens de descoberta não mudam a cor dos drones.
+
+Se não houver resposta à consulta, o mini plano estiver vencido, não houver ponto
+alcançável ou a confirmação direta não chegar a tempo, o externo inicia seu ciclo
+de afastamento e tenta novamente na próxima aproximação. Não consulta uma posição
+global nem atualiza silenciosamente o plano vencido. A validade não é renovada
+pelos retransmissores. `DISCOVERY_RESPONSE_TIMEOUT` e `DISCOVERY_PROBE_TIMEOUT`
+configuram os prazos; `RANDOM_DIRECTION_INTERVAL` controla a previsibilidade.
+
+O core retransmite os dados em broadcast no modo RANDOM. Cada nó retransmite cada
+`message_id` no máximo uma vez; o core alvo armazena a mensagem e não a retransmite.
+Os externos ignoram os broadcasts de dados e recebem suas mensagens pela troca
+confirmada com o core alvo. Presença, entrega e ACK continuam unicast.
+Em TOPOLOGY, o roteamento pelo anel permanece igual. O alcance de rádio continua
+limitado, e uma rede desconectada ainda pode impedir a entrega: não há repetição
+periódica da inundação. Não há prevenção de colisões entre os membros do core.
+
 ### UAV externo
 
 `main.py` adiciona quatro UAVs externos, depois dos membros do core, a 30 m do
@@ -133,6 +188,13 @@ transmissões totais por entrega única, pico de filas global/por core e contato
 concluídos, encerrados por timeout ou ainda em andamento. Transmissões contam
 tentativas, inclusive as que não chegam ao receptor; não há contagem direta de
 perdas físicas no rádio. Os dados permanecem em memória durante a execução.
+
+O relatório também conta consultas de descoberta, consultas sem resposta,
+respostas recebidas já vencidas, interceptações frustradas (inclui mini planos
+sem ponto alcançável, expiração durante a busca e confirmação direta ausente)
+e contatos confirmados por rádio. Conta separadamente as transmissões de consulta,
+mini plano, sonda e confirmação. Consultas não produzem mensagens de aplicação:
+as mensagens emitidas só são contadas após o contato direto confirmado.
 
 ### Configuração de logs
 

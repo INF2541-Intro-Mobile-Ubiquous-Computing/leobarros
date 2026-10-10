@@ -27,9 +27,14 @@ class SimulationMetrics:
         self.peak_queue_by_core = Counter()
         self.peak_queue_total = 0
         self.contacts = {}
+        self.discovery = Counter()
 
     def record(self, event, time, node, packet=None, **details):
         """Recebe eventos com tempo simulado. Marcos repetidos contam uma vez."""
+        if event in ('discovery_started', 'discovery_no_response', 'discovery_expired_response',
+                     'discovery_intercept_failed', 'discovery_contact_confirmed'):
+            self.discovery[event.removeprefix('discovery_')] += 1
+            return
         if event == 'transmission':
             kind = details['kind']
             self.transmissions[kind] += 1
@@ -99,6 +104,7 @@ class SimulationMetrics:
             peak_queue_total=self.peak_queue_total,
             peak_queue_by_core=dict(self.peak_queue_by_core),
             contacts=dict(Counter(self.contacts.values())),
+            discovery=dict(self.discovery),
         )
         return {'total': total, 'pairs': {pair: self._summarize(records)
                                          for pair, records in sorted(pairs.items())}}
@@ -139,6 +145,15 @@ class SimulationMetrics:
                   f"timeout={contacts.get('timeout', 0)}, em andamento={contacts.get('pending', 0)}"]
         for (source, destination), stats in result['pairs'].items():
             lines.extend(block(f'Externo {source} -> externo {destination}', stats))
+        discovery = total['discovery']
+        lines += [f"  Descoberta por rádio: consultas={discovery.get('started', 0)}, "
+                  f"sem resposta={discovery.get('no_response', 0)}, "
+                  f"respostas vencidas={discovery.get('expired_response', 0)}, "
+                  f"interceptações frustradas={discovery.get('intercept_failed', 0)}, "
+                  f"contatos confirmados={discovery.get('contact_confirmed', 0)}",
+                  '  Transmissões de descoberta: ' + ', '.join(
+                      f'{kind}={traffic.get(kind, 0)}' for kind in
+                      ('position_request', 'position_plan', 'contact_probe', 'contact_ready'))]
         lines.append('Pendências são o estado ao encerrar, não uma prova de perda definitiva. '
                      'Latências e esperas consideram somente mensagens recebidas.')
         return '\n'.join(lines)

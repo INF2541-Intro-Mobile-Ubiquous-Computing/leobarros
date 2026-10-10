@@ -6,15 +6,19 @@ from gradysim.protocol.messages.communication import CommunicationCommand, Commu
 import constants
 from movable_core_uav_protocol import MovableCoreUAVProtocol
 from communication_packets import validate_contact_packet, validate_data_packet
+from radio_discovery import DISCOVERY_TYPES, validate_discovery
 
 
 class MessageTransmitterUAVProtocol(MovableCoreUAVProtocol):
-    """Encaminha pelo menor caminho do anel até o alvo do externo destinatário."""
+    """Encaminha pelo anel em TOPOLOGY e por inundação em RANDOM."""
 
     def initialize(self):
         self.pending_messages = {}
         self.confirmed_messages = set()
         self.contacts = {}
+        self.seen_messages = set()
+        self.seen_discovery = {}
+        self.advertised_plans = {}
         super().initialize()
 
     def handle_packet(self, message):
@@ -23,6 +27,9 @@ class MessageTransmitterUAVProtocol(MovableCoreUAVProtocol):
             packet = json.loads(message)
             if not isinstance(packet, dict):
                 raise ValueError('O envelope deve ser um objeto JSON.')
+            if constants.SIMULATION_MODE == constants.RANDOM and packet.get('type') in DISCOVERY_TYPES:
+                self.handle_discovery(packet)
+                return
             if packet.get('type') in ('presence', 'ack'):
                 self.handle_contact_packet(packet)
                 return
@@ -31,6 +38,10 @@ class MessageTransmitterUAVProtocol(MovableCoreUAVProtocol):
             logging.warning('Mensagem descartada no core %s: %s', node_index, error)
             return
 
+        if constants.SIMULATION_MODE == constants.RANDOM:
+            if packet['message_id'] in self.seen_messages:
+                return
+            self.seen_messages.add(packet['message_id'])
         self.show_message_color(source_color)
 
         if node_index == destination:
@@ -40,6 +51,14 @@ class MessageTransmitterUAVProtocol(MovableCoreUAVProtocol):
             logging.debug('Mensagem %s recebida no core alvo %s: externo %s -> externo %s; conteúdo: %s',
                          packet['message_id'], node_index, packet['source_external_index'],
                          packet['destination_external_index'], packet['payload'])
+            return
+
+        if constants.SIMULATION_MODE == constants.RANDOM:
+            logging.debug('Mensagem %s no core %s: retransmitindo em broadcast, alvo %s',
+                          packet['message_id'], node_index, destination)
+            self.record_metric('transmission', packet, kind='data')
+            self.provider.send_communication_command(CommunicationCommand(
+                CommunicationCommandType.BROADCAST, message))
             return
 
         increasing = (destination - node_index) % constants.DRONE_COUNT
@@ -103,3 +122,38 @@ class MessageTransmitterUAVProtocol(MovableCoreUAVProtocol):
         self.record_metric('transmission', fields.get('packet'), kind=kind)
         self.provider.send_communication_command(CommunicationCommand(
             CommunicationCommandType.SEND, json.dumps(response), contact['node_id']))
+
+    def handle_discovery(self, packet):
+        validate_discovery(packet, self.flight_plan)
+        now = self.provider.current_time()
+        self.seen_discovery = {key: expiry for key, expiry in self.seen_discovery.items() if expiry > now}
+        self.advertised_plans = {key: value for key, value in self.advertised_plans.items()
+                                 if value['plan']['valid_until'] > now}
+        kind = packet['type']
+        if kind == 'contact_ready':
+            return  # A confirmação é exclusivamente direta, nunca retransmitida.
+        if kind == 'contact_probe':
+            advertised = self.advertised_plans.get(packet['request_id'])
+            if (packet['target_core'] == self.provider.get_id() and advertised is not None
+                    and advertised['requester_id'] == packet['requester_id']
+                    and advertised['external_index'] == packet['external_index']):
+                response = dict(advertised, type='contact_ready')
+                self.record_metric('transmission', kind='contact_ready')
+                self.provider.send_communication_command(CommunicationCommand(
+                    CommunicationCommandType.SEND, json.dumps(response), packet['requester_id']))
+            return
+        expiry = packet['query_expires_at'] if kind == 'position_request' else packet['plan']['valid_until']
+        key = (kind, packet['request_id'])
+        if now >= expiry or key in self.seen_discovery:
+            return
+        self.seen_discovery[key] = expiry
+        if kind == 'position_request' and packet['target_core'] == self.provider.get_id():
+            plan = self.random_motion.mini_plan()
+            if plan['valid_until'] <= plan['reference_time']:
+                return
+            packet = dict(packet, type='position_plan', plan=plan)
+            self.advertised_plans[packet['request_id']] = packet
+            self.seen_discovery['position_plan', packet['request_id']] = plan['valid_until']
+        self.record_metric('transmission', kind=packet['type'])
+        self.provider.send_communication_command(CommunicationCommand(
+            CommunicationCommandType.BROADCAST, json.dumps(packet)))

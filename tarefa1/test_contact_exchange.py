@@ -21,6 +21,9 @@ from simulation_metrics import MetricsHandler, SimulationMetrics
 
 class ContactExchangeTest(unittest.TestCase):
     def setUp(self):
+        mode = patch.object(constants, 'SIMULATION_MODE', constants.TOPOLOGY)
+        mode.start()
+        self.addCleanup(mode.stop)
         self.core = MessageTransmitterUAVProtocol()
         self.core.provider = Mock()
         self.core.provider.get_id.return_value = 2

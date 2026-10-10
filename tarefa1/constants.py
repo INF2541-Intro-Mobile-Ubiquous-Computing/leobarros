@@ -3,6 +3,16 @@ import math
 # Nível mínimo: DEBUG, INFO, WARNING, ERROR ou CRITICAL.
 LOG_LEVEL = 'INFO'
 
+TOPOLOGY = 'TOPOLOGY'
+RANDOM = 'RANDOM'
+SIMULATION_MODE = RANDOM #TOPOLOGY
+RANDOM_DIRECTION_INTERVAL = 1.0  # novo rumo a cada segundo ou ao atingir a borda
+RANDOM_SPEED = 6.0  # m/s em relação ao centro móvel
+RANDOM_MOVEMENT_INTERVAL = 0.01  # deve coincidir com a atualização de mobilidade
+DISCOVERY_RESPONSE_TIMEOUT = 1.0
+DISCOVERY_PROBE_TIMEOUT = 0.25
+DISCOVERY_TIMER = 'discovery'
+
 # Timers
 REPAINT_TIMER = "repaint"
 RESTORE_COLOR_TIMER = "restore_color"
