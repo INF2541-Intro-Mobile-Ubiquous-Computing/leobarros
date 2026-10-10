@@ -33,6 +33,9 @@ class MessageRoutingTest(unittest.TestCase):
         node.provider = Mock()
         node.provider.get_id.return_value = index
         node.provider.current_time.return_value = 0
+        node.pending_messages = {}
+        node.confirmed_messages = set()
+        node.contacts = {}
         node.color = constants.PAIR_COLORS.get(index, constants.DEFAULT_COLOR)
         with patch('visible_node_protocol.VisualizationController'):
             VisibleNodeProtocol.initialize(node)
@@ -115,6 +118,7 @@ class MessageRoutingTest(unittest.TestCase):
     def test_external_uses_mapping_and_sends_only_at_contact(self):
         drone = CommunicableUAVProtocol.with_external(0)()
         drone.provider = Mock()
+        drone.provider.get_id.return_value = constants.DRONE_COUNT
         drone.provider.current_time.return_value = 0
         with patch.object(constants, 'EXTERNAL_CORE_TARGETS', {0: 8, 1: 2}), \
              patch('movable_external_uav_protocol.VisibleNodeProtocol.initialize'):
@@ -125,12 +129,17 @@ class MessageRoutingTest(unittest.TestCase):
             drone.start_away(0)
         drone.provider.send_communication_command.assert_not_called()
         with patch.object(MovableExternalUAVProtocol, 'start_away'), \
-             patch.object(drone, 'in_contact', return_value=True):
+             patch.object(drone, 'in_contact', return_value=True), patch.object(drone, 'steer'):
             drone.start_away(1)
+            drone.start_away(1.1)
+            self.assertEqual(drone.message_sequence, 1)
+            self.assertEqual(drone.mode, 'contact')
+            drone.mode = 'seek'
             drone.start_away(2)
         commands = drone.provider.send_communication_command.call_args_list
-        packets = [json.loads(call.args[0].message) for call in commands]
-        self.assertEqual([call.args[0].destination for call in commands], [8, 8])
+        packets = [json.loads(call.args[0].message) for call in commands
+                   if json.loads(call.args[0].message)['type'] == 'data']
+        self.assertEqual([call.args[0].destination for call in commands], [8, 8, 8, 8])
         self.assertEqual([packet['message_id'] for packet in packets], ['0:1', '0:2'])
         self.assertEqual(packets[0]['source_external_index'], 0)
         self.assertEqual(packets[0]['source_color'], list(drone.color))
@@ -147,7 +156,8 @@ class MessageRoutingTest(unittest.TestCase):
                     def handle_command(self, command, sender, medium=None):
                         if sender.id >= constants.DRONE_COUNT:
                             packet = json.loads(command.message)
-                            sent[packet['message_id']] = packet
+                            if packet['type'] == 'data':
+                                sent[packet['message_id']] = packet
                         super().handle_command(command, sender, medium)
 
                 builder = SimulationBuilder(SimulationConfiguration(duration=60, execution_logging=False))
@@ -166,7 +176,8 @@ class MessageRoutingTest(unittest.TestCase):
 
                 def receive(node, message):
                     packet = json.loads(message)
-                    routes[packet['message_id']].append(node.provider.get_id())
+                    if packet.get('type', 'data') == 'data':
+                        routes[packet['message_id']].append(node.provider.get_id())
                     original(node, message)
 
                 def observe_log(template, *args):

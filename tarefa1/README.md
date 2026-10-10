@@ -21,6 +21,8 @@ Os parâmetros em `constants.py` são:
 - `EXTERNAL_SPEED = 24.0`: velocidade de deslocamento em m/s.
 - `EXTERNAL_AWAY_DURATION = 5.0`: duração do afastamento em segundos simulados.
 - `EXTERNAL_CONTACT_DISTANCE = 5.0`: distância suficiente para considerar contato.
+- `EXTERNAL_CONTACT_TIMEOUT = 2.0`: limite da troca de mensagens em segundos simulados.
+- `EXTERNAL_CONTACT_RETRY_INTERVAL = 0.25`: intervalo entre novas tentativas de contato.
 - `EXTERNAL_INTERCEPT_STEP = 0.05`: passo temporal da procura por uma interceptação.
 
 No afastamento, uma direção no plano XY é sorteada no semiplano orientado para
@@ -48,8 +50,10 @@ radialmente, mas não pode desfazer uma invasão inicial. Não há prevenção d
 entre os próprios externos.
 
 O contato é verificado a cada telemetria contra a posição prevista do alvo.
-Ao atingir a distância configurada, o UAV sorteia outro afastamento e reinicia
-o ciclo. Não é necessário aguardar confirmação nem encostar no alvo.
+Ao atingir a distância configurada, o UAV comunicável inicia a troca de mensagens
+e acompanha o ponto de contato móvel, preservando o controle de segurança.
+Ele só sorteia outro afastamento quando o core informa o fim da troca ou quando
+o tempo limite expira. Não é necessário encostar no alvo.
 ### Para executar
 python main.py
 
@@ -61,23 +65,41 @@ através de `FlightPlan.get_core_target`. `EXTERNAL_DESTINATIONS` define os pare
 fixos `0 ↔ 1` e `2 ↔ 3`.
 
 Ao encontrar seu alvo, o externo envia um JSON com `message_id` (índice externo
-e sequência local), `source_external_index`, `destination_external_index` e
+e sequência local), `source_external_index`, `source_color`, `destination_external_index` e
 `payload`. Cada encontro gera uma nova mensagem antes do afastamento.
 
 Os nove membros do core usam `MessageTransmitterUAVProtocol`. Cada receptor
 consulta no plano o alvo do destinatário externo e encaminha apenas ao vizinho
 que reduz o número de saltos no anel. Exemplos: `2 → 3 → 4` e `2 → 1 → 0 → 8`.
-Em empate, prefere índices crescentes. O core alvo registra a chegada e encerra;
-a entrega ao externo destinatário ainda não faz parte desta etapa. Mensagens
+Em empate, prefere índices crescentes. Cada receptor, incluindo o core alvo,
+assume a cor do emissor por um segundo e depois restaura sua cor original.
+O core alvo registra a chegada e guarda a mensagem em `pending_messages`. Mensagens
 inválidas e índices externos desconhecidos são descartados com log de aviso.
+
+Ao entrar em contato, o externo envia `presence`, com seu índice, ID real do
+simulador e uma sessão nova a cada encontro. O core responde com `delivery`
+para cada mensagem pendente desse destinatário. O externo registra as mensagens
+em `received_messages` e responde com `ack`; só então o core remove cada mensagem
+da fila. Quando a fila desse externo fica vazia, o core envia `contact_complete`,
+liberando o afastamento. Uma fila vazia desde o início também encerra a troca.
+
+Enquanto aguarda, o externo repete a presença a cada 0,25 s se estiver em contato.
+Isso permite repetir entregas e recuperar confirmações ou encerramentos perdidos.
+Mensagens repetidas são confirmadas novamente sem nova entrega à aplicação.
+Respostas de sessões antigas são ignoradas. Após 2 s, o externo se afasta mesmo
+sem resposta; mensagens não confirmadas ficam no core para o próximo encontro.
+Mensagens que chegam ao core depois do encerramento aguardam um encontro futuro.
 
 `RADIO_RANGE` cobre a corda entre vizinhos com 3 m de folga (aproximadamente
 9,84 m na configuração atual). O contato dos externos continua em 5 m.
 O envio é unicast ao vizinho escolhido, mesmo se outros nós estiverem no alcance.
 A folga é validada pelos cenários de teste, mas não constitui garantia para
-qualquer configuração de mobilidade. Não há confirmação, fila ou retransmissão
-automática em caso de perda de rádio. Os logs identificam o envio, cada salto e
-o recebimento final.
+qualquer configuração de mobilidade. A fila e as confirmações cobrem a entrega
+do core ao externo. O envio inicial do externo e os saltos pelo anel ainda não
+têm retransmissão automática em caso de perda de rádio. As filas e o histórico
+de mensagens recebidas/confirmadas ficam em memória durante a simulação.
+Os logs identificam o envio, cada salto, a chegada ao core, a entrega ao externo
+e sua confirmação.
 
 ### Para executar os testes unitários
 python -m unittest discover -s . -p "test_*.py" -v

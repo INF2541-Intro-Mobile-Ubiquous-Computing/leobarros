@@ -1,14 +1,16 @@
 import logging
 import json
+import math
 
 from gradysim.protocol.messages.communication import CommunicationCommand, CommunicationCommandType
 
 from movable_external_uav_protocol import MovableExternalUAVProtocol
+from communication_packets import validate_data_packet
 import constants
 
 
 class CommunicableUAVProtocol(MovableExternalUAVProtocol):
-    """Envia uma mensagem ao alvo a cada encontro, antes de se afastar."""
+    """Envia e recebe mensagens no encontro, aguardando a troca antes de partir."""
 
     @classmethod
     def with_external(cls, index):
@@ -22,13 +24,23 @@ class CommunicableUAVProtocol(MovableExternalUAVProtocol):
             raise ValueError('Configure o índice externo e seu destinatário fixo.')
         self.destination_external_index = constants.EXTERNAL_DESTINATIONS[self.external_index]
         self.message_sequence = 0
+        self.received_messages = {}
+        for value in (constants.EXTERNAL_CONTACT_TIMEOUT, constants.EXTERNAL_CONTACT_RETRY_INTERVAL):
+            if not math.isfinite(value) or value <= 0:
+                raise ValueError('Os intervalos de contato devem ser positivos e finitos.')
         super().initialize()
         self.flight_plan.get_core_target(self.destination_external_index)
 
     def start_away(self, now):
+        if self.mode == 'contact':
+            return
         if self.in_contact(now):
             self.message_sequence += 1
+            self.mode = 'contact'
+            self.contact_until = now + constants.EXTERNAL_CONTACT_TIMEOUT
+            self.steer(self.contact_position(now + constants.MOVEMENT_INTERVAL), now)
             packet = {
+                'type': 'data',
                 'message_id': f'{self.external_index}:{self.message_sequence}',
                 'source_external_index': self.external_index,
                 'source_color': self.color,
@@ -42,4 +54,70 @@ class CommunicableUAVProtocol(MovableExternalUAVProtocol):
             logging.info('Mensagem %s enviada: externo %s -> externo %s via core %s',
                          packet['message_id'], self.external_index,
                          self.destination_external_index, self.target_index)
+            self.send_presence(now)
+            return
         super().start_away(now)
+
+    def send_contact_packet(self, kind, **fields):
+        packet = dict(type=kind, external_index=self.external_index,
+                      node_id=self.provider.get_id(), session_id=self.message_sequence, **fields)
+        self.provider.send_communication_command(CommunicationCommand(
+            CommunicationCommandType.SEND, json.dumps(packet), self.target_index))
+
+    def send_presence(self, now):
+        self.send_contact_packet('presence')
+        self.next_presence_at = min(now + constants.EXTERNAL_CONTACT_RETRY_INTERVAL, self.contact_until)
+        self.provider.schedule_timer(constants.CONTACT_TIMER, self.next_presence_at)
+
+    def handle_timer(self, timer):
+        now = self.provider.current_time()
+        if timer == constants.CONTACT_TIMER:
+            if self.mode != 'contact':
+                return
+            if now >= self.contact_until:
+                logging.info('Tempo de contato esgotado para externo %s', self.external_index)
+                super().start_away(now)
+            elif now >= self.next_presence_at:
+                if self.in_contact(now):
+                    self.send_presence(now)
+                else:
+                    self.next_presence_at = min(now + constants.EXTERNAL_CONTACT_RETRY_INTERVAL,
+                                                self.contact_until)
+                    self.provider.schedule_timer(constants.CONTACT_TIMER, self.next_presence_at)
+            return
+        if timer == constants.MOVEMENT_TIMER and self.mode == 'contact':
+            self.steer(self.contact_position(now + constants.MOVEMENT_INTERVAL), now)
+            self.schedule_movement_timer()
+            return
+        super().handle_timer(timer)
+
+    def handle_packet(self, message):
+        try:
+            response = json.loads(message)
+            if not isinstance(response, dict) or response.get('type') not in ('delivery', 'contact_complete'):
+                raise ValueError('Resposta de contato inválida.')
+            if (type(response.get('external_index')) is not int
+                    or type(response.get('core_id')) is not int
+                    or type(response.get('session_id')) is not int):
+                raise ValueError('Identificação de contato inválida.')
+            if (self.mode != 'contact' or response['external_index'] != self.external_index
+                    or response['core_id'] != self.target_index
+                    or response['session_id'] != self.message_sequence):
+                return
+            if response['type'] == 'contact_complete':
+                super().start_away(self.provider.current_time())
+                return
+            packet = response.get('packet')
+            validate_data_packet(packet, self.flight_plan)
+            if packet['destination_external_index'] != self.external_index:
+                raise ValueError('Entrega dirigida a outro externo.')
+        except (ValueError, TypeError) as error:
+            logging.warning('Mensagem descartada no externo %s: %s', self.external_index, error)
+            return
+        message_id = packet['message_id']
+        if message_id not in self.received_messages:
+            self.received_messages[message_id] = packet
+            logging.info('Mensagem %s entregue ao externo %s; conteúdo: %s',
+                         message_id, self.external_index, packet['payload'])
+        # Confirma também as retransmissões, caso o ACK anterior tenha se perdido.
+        self.send_contact_packet('ack', message_id=message_id)

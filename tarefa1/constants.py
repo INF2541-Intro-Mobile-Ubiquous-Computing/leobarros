@@ -4,6 +4,7 @@ import math
 REPAINT_TIMER = "repaint"
 RESTORE_COLOR_TIMER = "restore_color"
 MOVEMENT_TIMER = "movement"
+CONTACT_TIMER = "contact"
 
 # Intervalos
 REPAINT_INTERVAL = 1
@@ -29,6 +30,8 @@ REAL_TIME = 1.0  # 1: tempo real; 0.5: meia velocidade; 2: dobro da velocidade.
 EXTERNAL_TARGET_INDEX = 0
 EXTERNAL_SPEED = 24.0  # m/s
 EXTERNAL_AWAY_DURATION = 5.0  # segundos simulados
+EXTERNAL_CONTACT_TIMEOUT = 2.0  # tempo máximo da troca antes de se afastar
+EXTERNAL_CONTACT_RETRY_INTERVAL = 0.25  # repete a presença se houver perda
 EXTERNAL_CONTACT_DISTANCE = 5.0  # metros
 # Corda entre vizinhos + folga para o acompanhamento discreto da formação.
 RADIO_RANGE = max(EXTERNAL_CONTACT_DISTANCE,
