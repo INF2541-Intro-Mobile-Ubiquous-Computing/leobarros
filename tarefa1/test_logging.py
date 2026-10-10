@@ -26,15 +26,20 @@ class SimulationLoggingTest(unittest.TestCase):
             for level in ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'):
                 with self.subTest(level=level):
                     output = io.StringIO()
+                    report = io.StringIO()
                     rng = random.Random(19)
                     with patch.object(constants, 'LOG_LEVEL', level), \
                          patch.object(root, 'handlers', []), \
                          patch('sys.stderr', output), \
+                         patch('sys.stdout', report), \
                          patch.object(main, 'PacedVisualizationHandler', side_effect=lambda pacer: pacer), \
                          patch.object(SimulationBuilder, 'add_handler', add_handler), \
                          patch('movable_external_uav_protocol.random.uniform', side_effect=rng.uniform):
                         main.main()
                     logs = output.getvalue()
+                    self.assertIn('Métricas da simulação', report.getvalue())
+                    self.assertIn('Global', report.getvalue())
+                    self.assertIn('Externo 0 -> externo 1', report.getvalue())
                     if level in ('DEBUG', 'INFO'):
                         self.assertIn('enviada: externo', logs)
                         self.assertIn('recebida no externo', logs)

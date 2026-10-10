@@ -107,7 +107,34 @@ e sua confirmação.
 ### Para executar os testes unitários
 python -m unittest discover -s . -p "test_*.py" -v
 
-### Logs
+### Métricas ao final da simulação
+
+`SimulationMetrics` recebe eventos dos protocolos com o tempo simulado, sem
+interferir na comunicação. `MetricsHandler` injeta um coletor compartilhado,
+exclusivo de cada simulação, e imprime o relatório final independentemente do
+`LOG_LEVEL`. `summary()` também disponibiliza os resultados como dicionários.
+
+O relatório mostra totais globais e por par origem–destino: mensagens únicas
+emitidas, recebidas, confirmadas, não entregues, recebidas sem confirmação,
+pendentes no core, taxa de entrega, latência média/mediana/p95/máxima e espera
+média no core. Latência é emissão até primeira entrega; espera no core é chegada
+ao core alvo até primeira entrega. Só mensagens recebidas entram nessas médias;
+sem amostras, o relatório mostra `n/d`. O p95 usa o posto `ceil(0.95 * N)`.
+
+Uma mensagem recebida sem ACK continua na fila do core, mas não é contada como
+não entregue. As não entregues são separadas entre as que aguardam no core alvo
+e as que ainda não chegaram a ele. Essas contagens representam o estado no fim
+da simulação; não comprovam perda definitiva. Retransmissões não duplicam as
+contagens de mensagens nem alteram os instantes da primeira entrega.
+
+As métricas globais adicionais incluem transmissões de dados (emissão e saltos),
+entregas core–externo, presença, ACK, encerramento, repetições de entrega,
+transmissões totais por entrega única, pico de filas global/por core e contatos
+concluídos, encerrados por timeout ou ainda em andamento. Transmissões contam
+tentativas, inclusive as que não chegam ao receptor; não há contagem direta de
+perdas físicas no rádio. Os dados permanecem em memória durante a execução.
+
+### Configuração de logs
 
 Por padrão, `LOG_LEVEL = 'INFO'` em `constants.py`. Nos protocolos, apenas o
 envio inicial e o recebimento final em `CommunicableUAVProtocol` usam `INFO`.

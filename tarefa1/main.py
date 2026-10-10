@@ -8,6 +8,7 @@ from message_transmitter_uav_protocol import MessageTransmitterUAVProtocol
 from communicable_uav_protocol import CommunicableUAVProtocol
 from flight_plan import FlightPlan
 from real_time_handler import RealTimeHandler, PacedVisualizationHandler
+from simulation_metrics import MetricsHandler
 import constants
 
 '''
@@ -54,6 +55,7 @@ def main():
     pacer = RealTimeHandler(constants.REAL_TIME)
     builder.add_handler(PacedVisualizationHandler(pacer))
     builder.add_handler(pacer)
+    builder.add_handler(MetricsHandler())
 
     simulation = builder.build()
     # O builder redefine o nível para INFO/DEBUG; reaplica também WARNING e superiores.

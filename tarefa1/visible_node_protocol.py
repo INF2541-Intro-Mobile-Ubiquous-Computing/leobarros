@@ -7,6 +7,13 @@ Nó visível no Grid
 '''
 class VisibleNodeProtocol (IProtocol):
 
+    metrics = None
+
+    def record_metric(self, event, packet=None, **details):
+        if self.metrics is not None:
+            self.metrics.record(event, self.provider.current_time(), self.provider.get_id(),
+                                packet, **details)
+
     '''
     Inicialização do nó
     '''

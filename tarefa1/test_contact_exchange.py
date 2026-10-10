@@ -16,6 +16,7 @@ from flight_plan import FlightPlan
 from message_transmitter_uav_protocol import MessageTransmitterUAVProtocol
 from movable_core_uav_protocol import MovableCoreUAVProtocol
 from movable_external_uav_protocol import MovableExternalUAVProtocol
+from simulation_metrics import MetricsHandler, SimulationMetrics
 
 
 class ContactExchangeTest(unittest.TestCase):
@@ -213,6 +214,8 @@ class ContactExchangeTest(unittest.TestCase):
                         super().handle_command(command, sender, medium)
 
                 builder = SimulationBuilder(SimulationConfiguration(duration=60, execution_logging=False))
+                metrics = SimulationMetrics()
+                builder.add_handler(MetricsHandler(metrics))
                 builder.add_handler(TimerHandler())
                 builder.add_handler(LossyCommunication(CommunicationMedium(transmission_range=constants.RADIO_RANGE)))
                 builder.add_handler(MobilityHandler())
@@ -225,8 +228,15 @@ class ContactExchangeTest(unittest.TestCase):
                                      tuple(c + d for c, d in zip(center, offset)))
                 rng = random.Random(19)
                 with patch('movable_external_uav_protocol.random.uniform', side_effect=rng.uniform), \
-                     patch('logging.info'):
+                     patch('logging.info'), patch('simulation_metrics.print'):
                     builder.build().start_simulation()
+                stats = metrics.summary()['total']
+                self.assertEqual(stats['emitted'], sum(node.message_sequence for node in externals))
+                self.assertEqual(stats['received'], sum(len(node.received_messages) for node in externals))
+                self.assertEqual(stats['confirmed'], sum(len(node.confirmed_messages) for node in cores))
+                self.assertEqual(stats['pending_in_core'], sum(len(node.pending_messages) for node in cores))
+                self.assertEqual(stats['not_delivered'], stats['emitted'] - stats['received'])
+                self.assertEqual(stats['received_unconfirmed'], stats['received'] - stats['confirmed'])
                 if drop_kind == 'all_responses':
                     self.assertTrue(dropped)
                     self.assertTrue(all(node.message_sequence >= 2 for node in externals))

@@ -34,6 +34,7 @@ class MessageTransmitterUAVProtocol(MovableCoreUAVProtocol):
         self.show_message_color(source_color)
 
         if node_index == destination:
+            self.record_metric('core_arrival', packet)
             if packet['message_id'] not in self.confirmed_messages:
                 self.pending_messages.setdefault(packet['message_id'], packet)
             logging.debug('Mensagem %s recebida no core alvo %s: externo %s -> externo %s; conteúdo: %s',
@@ -48,6 +49,7 @@ class MessageTransmitterUAVProtocol(MovableCoreUAVProtocol):
         next_hop = (node_index + step) % constants.DRONE_COUNT
         logging.debug('Mensagem %s no core %s: encaminhando para %s, alvo final %s',
                      packet['message_id'], node_index, next_hop, destination)
+        self.record_metric('transmission', packet, kind='data')
         self.provider.send_communication_command(CommunicationCommand(
             CommunicationCommandType.SEND, message, next_hop
         ))
@@ -80,6 +82,7 @@ class MessageTransmitterUAVProtocol(MovableCoreUAVProtocol):
                 return
             del self.pending_messages[message_id]
             self.confirmed_messages.add(message_id)
+            self.record_metric('confirmed', stored)
             logging.debug('Mensagem %s confirmada pelo externo %s', message_id, external)
             if not any(p['destination_external_index'] == external
                        for p in self.pending_messages.values()):
@@ -97,5 +100,6 @@ class MessageTransmitterUAVProtocol(MovableCoreUAVProtocol):
     def send_contact_response(self, kind, external, contact, **fields):
         response = dict(type=kind, external_index=external, core_id=self.provider.get_id(),
                         session_id=contact['session_id'], **fields)
+        self.record_metric('transmission', fields.get('packet'), kind=kind)
         self.provider.send_communication_command(CommunicationCommand(
             CommunicationCommandType.SEND, json.dumps(response), contact['node_id']))

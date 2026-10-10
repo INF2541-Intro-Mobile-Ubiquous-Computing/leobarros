@@ -37,6 +37,8 @@ class CommunicableUAVProtocol(MovableExternalUAVProtocol):
         if self.in_contact(now):
             self.message_sequence += 1
             self.mode = 'contact'
+            self.record_metric('contact_started', external_index=self.external_index,
+                               session_id=self.message_sequence)
             self.contact_until = now + constants.EXTERNAL_CONTACT_TIMEOUT
             self.steer(self.contact_position(now + constants.MOVEMENT_INTERVAL), now)
             packet = {
@@ -48,6 +50,8 @@ class CommunicableUAVProtocol(MovableExternalUAVProtocol):
                 'payload': 'o pato',
             }
             message = json.dumps(packet)
+            self.record_metric('emitted', packet)
+            self.record_metric('transmission', packet, kind='data')
             self.provider.send_communication_command(CommunicationCommand(
                 CommunicationCommandType.SEND, message, self.target_index
             ))
@@ -61,6 +65,7 @@ class CommunicableUAVProtocol(MovableExternalUAVProtocol):
     def send_contact_packet(self, kind, **fields):
         packet = dict(type=kind, external_index=self.external_index,
                       node_id=self.provider.get_id(), session_id=self.message_sequence, **fields)
+        self.record_metric('transmission', packet, kind=kind)
         self.provider.send_communication_command(CommunicationCommand(
             CommunicationCommandType.SEND, json.dumps(packet), self.target_index))
 
@@ -75,6 +80,8 @@ class CommunicableUAVProtocol(MovableExternalUAVProtocol):
             if self.mode != 'contact':
                 return
             if now >= self.contact_until:
+                self.record_metric('contact_timeout', external_index=self.external_index,
+                                   session_id=self.message_sequence)
                 logging.debug('Tempo de contato esgotado para externo %s', self.external_index)
                 super().start_away(now)
             elif now >= self.next_presence_at:
@@ -105,6 +112,8 @@ class CommunicableUAVProtocol(MovableExternalUAVProtocol):
                     or response['session_id'] != self.message_sequence):
                 return
             if response['type'] == 'contact_complete':
+                self.record_metric('contact_completed', external_index=self.external_index,
+                                   session_id=self.message_sequence)
                 super().start_away(self.provider.current_time())
                 return
             packet = response.get('packet')
@@ -118,6 +127,7 @@ class CommunicableUAVProtocol(MovableExternalUAVProtocol):
         message_id = packet['message_id']
         if message_id not in self.received_messages:
             self.received_messages[message_id] = packet
+            self.record_metric('received', packet)
             logging.info('Mensagem %s recebida no externo %s; conteúdo: %s',
                          message_id, self.external_index, packet['payload'])
         # Confirma também as retransmissões, caso o ACK anterior tenha se perdido.
