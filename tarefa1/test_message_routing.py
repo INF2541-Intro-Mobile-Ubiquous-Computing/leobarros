@@ -14,6 +14,7 @@ from communicable_uav_protocol import CommunicableUAVProtocol
 from flight_plan import FlightPlan
 from message_transmitter_uav_protocol import MessageTransmitterUAVProtocol
 from movable_external_uav_protocol import MovableExternalUAVProtocol
+from visible_node_protocol import VisibleNodeProtocol
 
 
 class MessageRoutingTest(unittest.TestCase):
@@ -31,6 +32,10 @@ class MessageRoutingTest(unittest.TestCase):
         node = MessageTransmitterUAVProtocol()
         node.provider = Mock()
         node.provider.get_id.return_value = index
+        node.provider.current_time.return_value = 0
+        node.color = constants.PAIR_COLORS.get(index, constants.DEFAULT_COLOR)
+        with patch('visible_node_protocol.VisualizationController'):
+            VisibleNodeProtocol.initialize(node)
         node.flight_plan = plan
         return node
 
@@ -44,6 +49,8 @@ class MessageRoutingTest(unittest.TestCase):
                     node = self.core(current, plan)
                     with self.assertLogs(level='INFO') as logs:
                         node.handle_packet(message)
+                    self.assertEqual(node.currentColor,
+                                     constants.PAIR_COLORS.get(route[0], constants.DEFAULT_COLOR))
                     if index == len(route) - 1:
                         node.provider.send_communication_command.assert_not_called()
                         self.assertIn('recebida no core alvo', logs.output[0])
@@ -56,12 +63,43 @@ class MessageRoutingTest(unittest.TestCase):
         for message in ('o pato', '[]', '{}', 'null', self.packet(destination_external_index=99),
                         self.packet(destination_external_index=True),
                         self.packet(source_external_index=-1), self.packet(payload=None),
+                        self.packet(source_color=[256, 0, 0]), self.packet(source_color=None),
                         self.packet(message_id='')):
             with self.subTest(message=message):
                 node = self.core(0, self.plan())
                 with self.assertLogs(level='WARNING'):
                     node.handle_packet(message)
                 node.provider.send_communication_command.assert_not_called()
+                self.assertIsNone(node.temporary_color)
+
+    def test_color_restores_one_second_after_receipt_including_target(self):
+        for index in (1, 2):
+            with self.subTest(index=index):
+                node = self.core(index, self.plan({0: 0, 1: 2}))
+                original_color = node.color
+                node.provider.current_time.return_value = 0.25
+                node.handle_packet(self.packet(source_color=[12, 34, 56]))
+                node.visualization.paint_node.assert_called_with(index, (12, 34, 56))
+                node.provider.schedule_timer.assert_called_with(constants.RESTORE_COLOR_TIMER, 1.25)
+                node.provider.current_time.return_value = 1.0
+                node.handle_timer(constants.REPAINT_TIMER)
+                self.assertEqual(node.currentColor, (12, 34, 56))
+                node.provider.current_time.return_value = 1.25
+                node.handle_timer(constants.RESTORE_COLOR_TIMER)
+                node.visualization.paint_node.assert_called_with(index, original_color)
+                self.assertEqual(node.color, original_color)
+
+    def test_new_message_restarts_color_duration(self):
+        node = self.core(1, self.plan())
+        node.handle_packet(self.packet(source_color=[1, 2, 3]))
+        node.provider.current_time.return_value = 0.5
+        node.handle_packet(self.packet(source_color=[4, 5, 6]))
+        node.provider.current_time.return_value = 1.0
+        node.handle_timer(constants.RESTORE_COLOR_TIMER)
+        self.assertEqual(node.currentColor, (4, 5, 6))
+        node.provider.current_time.return_value = 1.5
+        node.handle_timer(constants.RESTORE_COLOR_TIMER)
+        self.assertEqual(node.currentColor, node.color)
 
     def test_plan_validates_and_copies_mapping(self):
         targets = {0: 8}
@@ -95,6 +133,7 @@ class MessageRoutingTest(unittest.TestCase):
         self.assertEqual([call.args[0].destination for call in commands], [8, 8])
         self.assertEqual([packet['message_id'] for packet in packets], ['0:1', '0:2'])
         self.assertEqual(packets[0]['source_external_index'], 0)
+        self.assertEqual(packets[0]['source_color'], list(drone.color))
         self.assertEqual(packets[0]['destination_external_index'], 1)
 
     def test_delivery_with_moving_core_and_four_externals(self):

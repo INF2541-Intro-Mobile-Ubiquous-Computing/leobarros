@@ -20,11 +20,19 @@ class MessageTransmitterUAVProtocol(MovableCoreUAVProtocol):
                 raise ValueError('Identificador de mensagem ausente ou inválido.')
             if not isinstance(packet.get('payload'), str):
                 raise ValueError('Conteúdo ausente ou inválido.')
-            self.flight_plan.get_core_target(packet.get('source_external_index'))
+            source = self.flight_plan.get_core_target(packet.get('source_external_index'))
             destination = self.flight_plan.get_core_target(packet.get('destination_external_index'))
+            source_color = packet.get('source_color',
+                                      constants.PAIR_COLORS.get(source, constants.DEFAULT_COLOR))
+            if (not isinstance(source_color, (list, tuple)) or len(source_color) != 3
+                    or any(type(channel) is not int or not 0 <= channel <= 255
+                           for channel in source_color)):
+                raise ValueError('Cor do emissor inválida.')
         except (ValueError, TypeError) as error:
             logging.warning('Mensagem descartada no core %s: %s', node_index, error)
             return
+
+        self.show_message_color(source_color)
 
         if node_index == destination:
             logging.info('Mensagem %s recebida no core alvo %s: externo %s -> externo %s; conteúdo: %s',

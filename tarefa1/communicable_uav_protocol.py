@@ -31,6 +31,7 @@ class CommunicableUAVProtocol(MovableExternalUAVProtocol):
             packet = {
                 'message_id': f'{self.external_index}:{self.message_sequence}',
                 'source_external_index': self.external_index,
+                'source_color': self.color,
                 'destination_external_index': self.destination_external_index,
                 'payload': 'o pato',
             }

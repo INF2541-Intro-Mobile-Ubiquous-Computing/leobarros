@@ -2,10 +2,12 @@ import math
 
 # Timers
 REPAINT_TIMER = "repaint"
+RESTORE_COLOR_TIMER = "restore_color"
 MOVEMENT_TIMER = "movement"
 
 # Intervalos
 REPAINT_INTERVAL = 1
+MESSAGE_COLOR_DURATION = 1.0
 MOVEMENT_INTERVAL = 0.1
 
 # Plano de vôo comum aos drones; o instante zero da simulação é o início da missão.
