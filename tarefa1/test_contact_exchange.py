@@ -237,7 +237,6 @@ class ContactExchangeTest(unittest.TestCase):
                 self.assertEqual(stats['emitted'], sum(node.message_sequence for node in externals))
                 self.assertEqual(stats['received'], sum(len(node.received_messages) for node in externals))
                 self.assertEqual(stats['confirmed'], sum(len(node.confirmed_messages) for node in cores))
-                self.assertEqual(stats['pending_in_core'], sum(len(node.pending_messages) for node in cores))
                 self.assertEqual(stats['not_delivered'], stats['emitted'] - stats['received'])
                 self.assertEqual(stats['received_unconfirmed'], stats['received'] - stats['confirmed'])
                 if drop_kind == 'all_responses':

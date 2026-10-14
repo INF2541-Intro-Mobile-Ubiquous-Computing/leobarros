@@ -32,23 +32,17 @@ class SimulationMetricsTest(unittest.TestCase):
         self.assertEqual(total['confirmed'], 1)
         self.assertEqual(total['not_delivered'], 2)
         self.assertEqual(total['received_unconfirmed'], 1)
-        self.assertEqual(total['pending_in_core'], 2)
-        self.assertEqual(total['pending_undelivered'], 1)
-        self.assertEqual(total['not_at_target_core'], 1)
         self.assertEqual(total['delivery_rate'], 0.5)
         self.assertEqual(total['latency_mean'], 6.5)
         self.assertEqual(total['latency_median'], 6.5)
-        self.assertEqual(total['latency_p95'], 8)
         self.assertEqual(total['latency_max'], 8)
         self.assertEqual(total['core_wait_mean'], 4.5)
-        self.assertEqual(total['peak_queue_total'], 3)
-        self.assertEqual(total['peak_queue_by_core'], {2: 2, 6: 1})
         self.assertEqual(result['pairs'][0, 1]['delivery_rate'], 1)
         self.assertEqual(result['pairs'][2, 3]['delivery_rate'], 0)
         self.assertIsNone(result['pairs'][2, 3]['latency_mean'])
         self.assertIn('Externo 2 -> externo 3', metrics.format_report())
 
-    def test_traffic_and_contact_outcomes(self):
+    def test_removed_diagnostic_events_are_ignored(self):
         metrics = SimulationMetrics()
         packet = self.packet('0:1')
         metrics.record('emitted', 0, 9, packet)
@@ -58,12 +52,17 @@ class SimulationMetricsTest(unittest.TestCase):
         for session in (1, 2, 3):
             metrics.record('contact_started', 0, 10, external_index=1, session_id=session)
         metrics.record('contact_completed', 2, 10, external_index=1, session_id=1)
-        metrics.record('contact_completed', 2, 10, external_index=1, session_id=1)
         metrics.record('contact_timeout', 2, 10, external_index=1, session_id=2)
+        report = metrics.format_report()
         total = metrics.summary()['total']
-        self.assertEqual(total['delivery_retries'], 1)
-        self.assertEqual(total['transmissions_per_delivery'], 7)
-        self.assertEqual(total['contacts'], {'completed': 1, 'timeout': 1, 'pending': 1})
+        for removed in ('transmissions', 'delivery_retries', 'transmissions_per_delivery',
+                        'peak_queue_total', 'peak_queue_by_core', 'contacts',
+                        'pending_in_core', 'pending_undelivered', 'not_at_target_core',
+                        'latency_p95'):
+            self.assertNotIn(removed, total)
+        for label in ('Transmissões:', 'Repetições de entrega:', 'Pico de mensagens nas filas:',
+                      'Contatos:', 'p95', 'Pendentes no core'):
+            self.assertNotIn(label, report)
 
     def test_empty_simulation_and_independent_collectors(self):
         first, second = SimulationMetrics(), SimulationMetrics()
@@ -74,7 +73,6 @@ class SimulationMetricsTest(unittest.TestCase):
         self.assertIsNone(total['delivery_rate'])
         self.assertIsNone(total['latency_mean'])
         self.assertIsNone(total['core_wait_mean'])
-        self.assertIsNone(total['transmissions_per_delivery'])
         self.assertIn('n/d', second.format_report())
 
 

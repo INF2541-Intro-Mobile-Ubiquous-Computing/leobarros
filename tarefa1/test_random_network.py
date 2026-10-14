@@ -71,7 +71,6 @@ class RandomNetworkTest(unittest.TestCase):
                 self.assertGreater(stats['total']['received'], 0)
                 self.assertGreater(stats['total']['confirmed'], 0)
                 self.assertGreater(stats['total']['discovery']['started'], 0)
-                self.assertGreater(stats['total']['transmissions'].get('position_plan', 0), 0)
                 print(f"RANDOM seed={seed}: {stats['total']['received']}/{stats['total']['emitted']} entregues")
 
 
