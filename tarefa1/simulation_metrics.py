@@ -154,8 +154,6 @@ class SimulationMetrics:
                   '  Transmissões de descoberta: ' + ', '.join(
                       f'{kind}={traffic.get(kind, 0)}' for kind in
                       ('position_request', 'position_plan', 'contact_probe', 'contact_ready'))]
-        lines.append('Pendências são o estado ao encerrar, não uma prova de perda definitiva. '
-                     'Latências e esperas consideram somente mensagens recebidas.')
         return '\n'.join(lines)
 
 

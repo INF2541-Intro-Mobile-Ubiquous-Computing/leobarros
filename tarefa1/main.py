@@ -25,7 +25,7 @@ def main():
     )
     config = SimulationConfiguration(
         # O handler abaixo controla o ritmo, evitando as esperas relativas do simulador.
-        duration=flight_plan.cycle_duration * 4, real_time=False,
+        duration=flight_plan.cycle_duration * constants.EXECUTION_CYCLES, real_time=False,
         # Desativar execution_logging suprime também INFO durante a simulação.
         debug=logger.isEnabledFor(logging.DEBUG), execution_logging=True
     )
