@@ -35,7 +35,7 @@ class ExternalMovementTest(unittest.TestCase):
             drone.current_position = (0, 0, 0)
             self.assertFalse(drone.in_contact(0))
 
-    def test_four_external_drones_stay_outside_moving_exclusion_area(self):
+    def test_four_external_drones_stay_outside_fixed_exclusion_area(self):
         for seed in (7, 19, 41):
             with self.subTest(seed=seed):
                 builder = SimulationBuilder(SimulationConfiguration(duration=60))
@@ -65,15 +65,16 @@ class ExternalMovementTest(unittest.TestCase):
                 self.assertEqual(violations, [])
                 self.assertEqual(contacts, {0, 2, 4, 6})
 
-    def test_outside_contact_point_and_moving_center_path_check(self):
+    def test_outside_contact_point_and_fixed_center_path_check(self):
         drone = self.make_drone()
         point = drone.contact_position(2)
         self.assertAlmostEqual(math.dist(point, drone.target_position(2)), constants.EXTERNAL_CONTACT_OFFSET)
         self.assertAlmostEqual(math.dist(point, drone.flight_plan.get_position(2)),
                                constants.FORMATION_RADIUS + constants.EXTERNAL_CONTACT_OFFSET)
         drone.current_position = (13, 0, 0)
-        # O centro avança para leste: até ficar parado aqui seria inseguro.
-        self.assertFalse(drone.path_is_safe((13, 0, 0), 0))
+        # Com o centro fixo, permanecer fora da área de exclusão é seguro.
+        self.assertTrue(drone.path_is_safe((13, 0, 0), 0))
+        self.assertFalse(drone.path_is_safe((-30, 0, 0), 0))
         drone.steer((-30, 0, 0), 0)
         self.assertTrue(drone.path_is_safe(drone.destination, 0))
 
@@ -86,7 +87,7 @@ class ExternalMovementTest(unittest.TestCase):
         self.assertEqual(len(calls), constants.DRONE_COUNT + 4)
         self.assertTrue(all(call.args[0] is main.MessageTransmitterUAVProtocol
                             for call in calls[:constants.DRONE_COUNT]))
-        center = constants.FLIGHT_PLAN_POINTS[0]
+        center = (0, 0, 0)
         assignments = (((30, 0, 0), 0), ((-30, 0, 0), 2),
                        ((0, 30, 0), 4), ((0, -30, 0), 6))
         drones = []
@@ -162,7 +163,7 @@ class ExternalMovementTest(unittest.TestCase):
         builder.add_handler(mobility)
         for index in range(constants.DRONE_COUNT):
             builder.add_node(MovableCoreUAVProtocol, FlightPlan.position_on_circle(
-                constants.FLIGHT_PLAN_POINTS[0], constants.FORMATION_RADIUS,
+                (0, 0, 0), constants.FORMATION_RADIUS,
                 index * 360 / constants.DRONE_COUNT))
         external_id = builder.add_node(MovableExternalUAVProtocol, (-30, 0, 0))
         contacts = []

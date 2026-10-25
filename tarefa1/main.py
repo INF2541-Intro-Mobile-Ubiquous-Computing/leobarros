@@ -12,7 +12,7 @@ from simulation_metrics import MetricsHandler
 import constants
 
 '''
-Cria 'DRONE_COUNT' drones em formação de círculo e atribui a eles um plano de vôo.
+Cria 'DRONE_COUNT' drones em rotação ao redor do centro fixo (0, 0, 0).
 '''
 def main():
     if constants.SIMULATION_MODE not in (constants.TOPOLOGY, constants.RANDOM):
@@ -20,12 +20,11 @@ def main():
     logger = logging.getLogger()
     logger.setLevel(constants.LOG_LEVEL)
     flight_plan = FlightPlan(
-        list(constants.FLIGHT_PLAN_POINTS), constants.CENTER_SPEED,
         constants.EXTERNAL_CORE_TARGETS, constants.DRONE_COUNT
     )
     config = SimulationConfiguration(
         # O handler abaixo controla o ritmo, evitando as esperas relativas do simulador.
-        duration=flight_plan.cycle_duration * constants.EXECUTION_CYCLES, real_time=False,
+        duration=constants.SIMULATION_DURATION, real_time=False,
         # Desativar execution_logging suprime também INFO durante a simulação.
         debug=logger.isEnabledFor(logging.DEBUG), execution_logging=True
     )

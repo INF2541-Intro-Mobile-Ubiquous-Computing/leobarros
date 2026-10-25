@@ -25,8 +25,7 @@ class MessageRoutingTest(unittest.TestCase):
         self.addCleanup(mode.stop)
 
     def plan(self, targets=None, count=9):
-        return FlightPlan(constants.FLIGHT_PLAN_POINTS, constants.CENTER_SPEED,
-                          targets if targets is not None else constants.EXTERNAL_CORE_TARGETS, count)
+        return FlightPlan(targets if targets is not None else constants.EXTERNAL_CORE_TARGETS, count)
 
     def packet(self, **overrides):
         packet = dict(message_id='0:1', source_external_index=0,
@@ -187,7 +186,7 @@ class MessageRoutingTest(unittest.TestCase):
                 builder.add_handler(RecordingCommunication(CommunicationMedium(
                     transmission_range=constants.RADIO_RANGE)))
                 builder.add_handler(MobilityHandler())
-                center = constants.FLIGHT_PLAN_POINTS[0]
+                center = (0, 0, 0)
                 for index in range(constants.DRONE_COUNT):
                     builder.add_node(MessageTransmitterUAVProtocol, FlightPlan.position_on_circle(
                         center, constants.FORMATION_RADIUS, index * 360 / constants.DRONE_COUNT))

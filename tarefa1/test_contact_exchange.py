@@ -29,8 +29,7 @@ class ContactExchangeTest(unittest.TestCase):
         self.core.provider.get_id.return_value = 2
         with patch.object(MovableCoreUAVProtocol, 'initialize'):
             self.core.initialize()
-        self.core.flight_plan = FlightPlan(constants.FLIGHT_PLAN_POINTS, constants.CENTER_SPEED,
-                                           constants.EXTERNAL_CORE_TARGETS, constants.DRONE_COUNT)
+        self.core.flight_plan = FlightPlan(constants.EXTERNAL_CORE_TARGETS, constants.DRONE_COUNT)
         self.core.show_message_color = Mock()
         self.external = CommunicableUAVProtocol.with_external(1)()
         self.external.provider = Mock()
@@ -222,7 +221,7 @@ class ContactExchangeTest(unittest.TestCase):
                 builder.add_handler(TimerHandler())
                 builder.add_handler(LossyCommunication(CommunicationMedium(transmission_range=constants.RADIO_RANGE)))
                 builder.add_handler(MobilityHandler())
-                center = constants.FLIGHT_PLAN_POINTS[0]
+                center = (0, 0, 0)
                 for index in range(constants.DRONE_COUNT):
                     builder.add_node(RecordingCore, FlightPlan.position_on_circle(
                         center, constants.FORMATION_RADIUS, index * 360 / constants.DRONE_COUNT))

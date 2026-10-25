@@ -17,34 +17,11 @@ class FormationTest(unittest.TestCase):
         mode.start()
         self.addCleanup(mode.stop)
 
-    def test_center_keeps_speed_on_unequal_segments_and_closes_cycle(self):
-        points = ((-50, 50, 0), (-50, -50, 0), (50, 50, 0), (50, -50, 0))
-        plan = FlightPlan(points, speed=3)
-        self.assertAlmostEqual(plan.segment_durations[0], 100 / 3)
-        self.assertAlmostEqual(plan.segment_durations[1], math.sqrt(20000) / 3)
-        start_time = 0
-        for index, duration in enumerate(plan.segment_durations):
-            with self.subTest(segment=index):
-                t = start_time + duration / 2
-                self.assertAlmostEqual(math.dist(plan.get_position(t), plan.get_position(t + 0.1)), 0.3)
-                expected = points[(index + 1) % len(points)]
-                self.assertLess(math.dist(plan.get_position(start_time + duration), expected), 1e-10)
-            start_time += duration
-        self.assertEqual(plan.get_position(plan.cycle_duration), points[0])
-        self.assertLess(math.dist(plan.get_position(plan.cycle_duration + 5), plan.get_position(5)), 1e-10)
-
-    def test_repeated_points_and_invalid_plans(self):
-        plan = FlightPlan(((0, 0, 0), (0, 0, 0), (3, 0, 0)), speed=3)
-        self.assertEqual(plan.get_position(0), (0, 0, 0))
-        self.assertEqual(plan.get_position(1), (3, 0, 0))
-        for points, speed in (
-            (((0, 0, 0), (3, 0, 0)), 0),
-            (((0, 0, 0), (3, 0, 0)), -1),
-            (((0, 0, 0),), 3),
-            (((0, 0, 0), (0, 0, 0)), 3),
-        ):
-            with self.subTest(points=points, speed=speed), self.assertRaises(ValueError):
-                FlightPlan(points, speed)
+    def test_center_stays_at_origin(self):
+        plan = FlightPlan()
+        for time in (0, 0.1, 5, 50, 1000):
+            with self.subTest(time=time):
+                self.assertEqual(plan.get_position(time), (0, 0, 0))
 
     def test_angular_speed_preserves_tangential_speed(self):
         self.assertAlmostEqual(
@@ -53,7 +30,7 @@ class FormationTest(unittest.TestCase):
         )
 
     def test_independent_plans_and_movement_over_a_complete_cycle(self):
-        cycle_duration = FlightPlan(constants.FLIGHT_PLAN_POINTS, constants.CENTER_SPEED).cycle_duration
+        cycle_duration = 360 / abs(constants.ANGULAR_SPEED)
         builder = SimulationBuilder(SimulationConfiguration(duration=cycle_duration + 1))
         mobility = MobilityHandler()
         timer = TimerHandler()
@@ -61,7 +38,7 @@ class FormationTest(unittest.TestCase):
         builder.add_handler(mobility)
         for index in range(constants.DRONE_COUNT):
             builder.add_node(MovableCoreUAVProtocol, FlightPlan.position_on_circle(
-                constants.FLIGHT_PLAN_POINTS[0], constants.FORMATION_RADIUS,
+                (0, 0, 0), constants.FORMATION_RADIUS,
                 index * 360 / constants.DRONE_COUNT,
             ))
         simulation = builder.build()
@@ -80,9 +57,8 @@ class FormationTest(unittest.TestCase):
 
         self.assertEqual(len(plans), 9)
         self.assertEqual(len({id(plan) for plan in plans.values()}), 9)
-        expected_plan = FlightPlan(list(constants.FLIGHT_PLAN_POINTS), constants.CENTER_SPEED)
         for time, center, target, initial_angle in samples:
-            self.assertEqual(center, expected_plan.get_position(time))
+            self.assertEqual(center, (0, 0, 0))
             angle = math.degrees(math.atan2(target[1] - center[1], target[0] - center[0]))
             expected_angle = initial_angle + constants.ANGULAR_SPEED * time
             self.assertAlmostEqual((angle - expected_angle + 180) % 360 - 180, 0)
@@ -90,10 +66,10 @@ class FormationTest(unittest.TestCase):
         for time in range(0, int(cycle_duration) + 1, 5):
             self.assertEqual(sum(math.isclose(t, time, abs_tol=1e-8) for t, *_ in samples), 9)
 
-        # Todos realmente percorreram o trajeto: observar posições durante a execução
-        # é verificado no teste abaixo; aqui verificamos a formação ao final.
+        # Verifica o centro físico e a formação ao final de uma volta.
         positions = [node.position for node in mobility.nodes.values()]
         center = tuple(sum(p[axis] for p in positions) / len(positions) for axis in range(3))
+        self.assertLess(math.dist(center, (0, 0, 0)), 1e-8)
         for position in positions:
             self.assertAlmostEqual(math.dist(position, center), constants.FORMATION_RADIUS, delta=0.2)
 
@@ -105,15 +81,11 @@ class FormationTest(unittest.TestCase):
         builder.add_node(MovableCoreUAVProtocol, (constants.FORMATION_RADIUS, 0, 0))
         builder.build().start_simulation()
         position = mobility.nodes[0].position
-        plan = FlightPlan(list(constants.FLIGHT_PLAN_POINTS), constants.CENTER_SPEED)
+        plan = FlightPlan()
         expected = FlightPlan.position_on_circle(
             plan.get_position(5.5), constants.FORMATION_RADIUS, constants.ANGULAR_SPEED * 5.5
         )
-        center_speed = max(
-            math.dist(point, plan.points[(index + 1) % len(plan.points)]) / plan.segment_durations[index]
-            for index, point in enumerate(plan.points)
-        )
-        target_speed = center_speed + constants.FORMATION_RADIUS * abs(math.radians(constants.ANGULAR_SPEED))
+        target_speed = abs(constants.ROTATION_SPEED)
         self.assertGreaterEqual(constants.MOVEMENT_SPEED, target_speed)
         tolerance = target_speed * constants.MOVEMENT_INTERVAL + constants.MOVEMENT_SPEED * 0.02
         self.assertLessEqual(math.dist(position, expected), tolerance)
@@ -121,7 +93,7 @@ class FormationTest(unittest.TestCase):
     def test_rotation_uses_absolute_time_and_supports_both_directions(self):
         drone = MovableCoreUAVProtocol()
         drone.provider = Mock()
-        drone.flight_plan = FlightPlan(list(constants.FLIGHT_PLAN_POINTS), constants.CENTER_SPEED)
+        drone.flight_plan = FlightPlan()
         drone.initial_angle = 0
         for speed, time, direction in (
             (9, 40, (1, 0)), (9, 10, (0, 1)),

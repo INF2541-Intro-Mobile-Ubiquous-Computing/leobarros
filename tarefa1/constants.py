@@ -6,9 +6,9 @@ LOG_LEVEL = 'WARNING'
 TOPOLOGY = 'TOPOLOGY'
 RANDOM = 'RANDOM'
 SIMULATION_MODE = TOPOLOGY
-EXECUTION_CYCLES = 5 # Número de ciclos de execução do plano de vôo
+SIMULATION_DURATION = 250 / 3  # segundos simulados; preserva a duração anterior
 RANDOM_DIRECTION_INTERVAL = 1.0  # novo rumo a cada segundo ou ao atingir a borda
-RANDOM_SPEED = 6.0  # m/s em relação ao centro móvel
+RANDOM_SPEED = 6.0  # m/s em relação ao centro fixo
 RANDOM_MOVEMENT_INTERVAL = 0.01  # deve coincidir com a atualização de mobilidade
 DISCOVERY_RESPONSE_TIMEOUT = 1.0
 DISCOVERY_PROBE_TIMEOUT = 0.25
@@ -25,10 +25,7 @@ REPAINT_INTERVAL = 1
 MESSAGE_COLOR_DURATION = 1.0
 MOVEMENT_INTERVAL = 0.1
 
-# Plano de vôo comum aos drones; o instante zero da simulação é o início da missão.
-FLIGHT_PLAN_POINTS = ((0, 0, 0), (50, 0, 0), (50, -50, 0), (0, -50, 0))
-#FLIGHT_PLAN_POINTS = ((-50, 50, 0), (-50, -50, 0), (50, 50, 0), (50, -50, 0))
-CENTER_SPEED = 12.0  # m/s, constante em todos os trechos.
+# Formação circular com centro virtual fixo em (0, 0, 0).
 ROTATION_SPEED = 6.0  # m/s tangenciais; negativo inverte a rotação.
 FORMATION_RADIUS = 10
 ANGULAR_SPEED = math.degrees(ROTATION_SPEED / FORMATION_RADIUS)  # graus/s
@@ -37,7 +34,7 @@ DRONE_COUNT = 9
 EXTERNAL_CORE_TARGETS = {0: 0, 1: 2, 2: 4, 3: 6}
 EXTERNAL_DESTINATIONS = {0: 1, 1: 0, 2: 3, 3: 2}
 # Velocidade para alcançar os alvos, com 20% de margem sobre a referência máxima.
-MOVEMENT_SPEED = 1.2 * (CENTER_SPEED + abs(ROTATION_SPEED))
+MOVEMENT_SPEED = 1.2 * abs(ROTATION_SPEED)
 REAL_TIME = 1.0  # 1: tempo real; 0.5: meia velocidade; 2: dobro da velocidade.
 
 # UAV externo: movimento e contato com a posição prevista de um membro do core.

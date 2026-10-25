@@ -70,7 +70,7 @@ class RandomCoreTest(unittest.TestCase):
 
                 for index in range(constants.DRONE_COUNT):
                     builder.add_node(ObservedCore, FlightPlan.position_on_circle(
-                        constants.FLIGHT_PLAN_POINTS[0], constants.FORMATION_RADIUS,
+                        (0, 0, 0), constants.FORMATION_RADIUS,
                         index * 360 / constants.DRONE_COUNT))
                 with patch('random_core_motion.random.uniform', side_effect=rng.uniform):
                     simulation = builder.build()

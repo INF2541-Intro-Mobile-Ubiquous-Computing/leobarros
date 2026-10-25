@@ -20,7 +20,6 @@ class MovableExternalUAVProtocol (VisibleNodeProtocol):
 
     def initialize(self):
         self.flight_plan = FlightPlan(
-            constants.FLIGHT_PLAN_POINTS, constants.CENTER_SPEED,
             constants.EXTERNAL_CORE_TARGETS, constants.DRONE_COUNT)
         if self.external_index is not None:
             self.target_index = self.flight_plan.get_core_target(self.external_index)
@@ -37,8 +36,6 @@ class MovableExternalUAVProtocol (VisibleNodeProtocol):
         if (constants.SIMULATION_MODE != constants.RANDOM
                 and not 0 < constants.SAFETY_MARGIN < constants.EXTERNAL_CONTACT_OFFSET < constants.EXTERNAL_CONTACT_DISTANCE):
             raise ValueError('Use 0 < margem de segurança < afastamento de contato < alcance de contato.')
-        if constants.EXTERNAL_SPEED <= constants.CENTER_SPEED:
-            raise ValueError('O UAV externo deve ser mais rápido que o centro para conseguir se afastar.')
         self.current_position = None
         self.mode = None
         self.contour_direction = None
@@ -128,7 +125,7 @@ class MovableExternalUAVProtocol (VisibleNodeProtocol):
             delay += constants.EXTERNAL_INTERCEPT_STEP
 
     def path_is_safe(self, destination, now):
-        """Verifica o próximo passo contra o centro móvel, inclusive entre amostras.
+        """Verifica o próximo passo contra o centro fixo, inclusive entre amostras.
 
         A folga cobre a amostragem de 0,01 s e uma telemetria de mobilidade atrasada
         em até 0,01 s (intervalo padrão do MobilityHandler deste projeto).
@@ -138,7 +135,7 @@ class MovableExternalUAVProtocol (VisibleNodeProtocol):
         step = 0.01
         horizon = constants.MOVEMENT_INTERVAL + step
         radius = constants.FORMATION_RADIUS + constants.SAFETY_MARGIN
-        buffer = constants.EXTERNAL_SPEED * step + (constants.EXTERNAL_SPEED + constants.CENTER_SPEED) * step / 2
+        buffer = constants.EXTERNAL_SPEED * step + constants.EXTERNAL_SPEED * step / 2
         distance = math.dist(self.current_position, destination)
         for index in range(math.ceil(horizon / step) + 1):
             delay = min(index * step, horizon)
@@ -160,8 +157,8 @@ class MovableExternalUAVProtocol (VisibleNodeProtocol):
                 cross = radial[0] * (destination[1] - center[1]) - radial[1] * (destination[0] - center[0])
                 self.contour_direction = 1 if cross >= 0 else -1
             tangent = (-radial[1] * self.contour_direction, radial[0] * self.contour_direction)
-            # Começa tangencialmente; aumenta a componente para fora se o centro
-            # estiver avançando sobre o UAV. O último candidato é fuga radial.
+            # Começa tangencialmente; aumenta a componente para fora até obter
+            # um passo seguro. O último candidato é fuga radial.
             for outward in (0, 0.5, 1, 2, 4, None):
                 direction = radial if outward is None else tuple(t + outward * r for t, r in zip(tangent, radial))
                 length = math.hypot(*direction)

@@ -8,17 +8,17 @@
 
 Configure `SIMULATION_MODE` em `constants.py` e reinicie a simulação:
 
-- `SIMULATION_MODE = TOPOLOGY`: comportamento original, mantendo a formação
-  circular com translação e rotação.
+- `SIMULATION_MODE = TOPOLOGY`: formação circular girando ao redor do centro
+  virtual fixo em `(0, 0, 0)`.
 - `SIMULATION_MODE = RANDOM`: mesma formação inicial, mas cada nó voa no interior
   do disco com direção independente, sorteada a cada segundo simulado e também
-  ao atingir a borda. Na borda, o sorteio aponta para dentro. O círculo continua
-  acompanhando o centro do plano de voo, com a mesma altitude.
+  ao atingir a borda. Na borda, o sorteio aponta para dentro. O disco permanece
+  fixo em `(0, 0, 0)`, com a mesma altitude.
 
 `RANDOM_SPEED` define a velocidade relativa ao centro; `RANDOM_DIRECTION_INTERVAL`
-define o intervalo de sorteio (1 s). A translação do centro é somada ao movimento.
+define o intervalo de sorteio (1 s). O centro permanece fixo.
 `RANDOM_MOVEMENT_INTERVAL` sincroniza comandos e atualizações físicas (0,01 s),
-para manter as posições dentro do disco também nas curvas do plano de voo.
+para manter as posições dentro do disco.
 
 No modo RANDOM, os externos podem atravessar o círculo: não há teste de área de
 exclusão nem desvio de colisão, e o ponto de contato não recebe o afastamento
@@ -83,23 +83,23 @@ Os parâmetros em `constants.py` são:
 No afastamento, uma direção no plano XY é sorteada no semiplano orientado para
 fora do centro virtual e mantida como direção preferencial durante o período.
 O controle de segurança pode desviá-la temporariamente. Essa orientação é
-definida no início; o centro continua se movendo independentemente.
+definida no início; o centro permanece na origem.
 
-Na busca, o UAV prevê a translação e rotação do alvo a partir do plano e procura
+Na busca, o UAV prevê a rotação do alvo a partir do plano e procura
 o primeiro instante da grade temporal em que consegue alcançar um ponto 3 m
 radialmente para fora do alvo (`EXTERNAL_CONTACT_OFFSET`). A busca é recalculada
 a cada timer de movimento. É uma estimativa pelo caminho reto com passo de 0,05 s;
 os desvios de segurança podem atrasar o encontro, sem garantia de tempo mínimo.
 
-`SAFETY_MARGIN = 2.0` define uma área de exclusão móvel de raio 12 m com a
+`SAFETY_MARGIN = 2.0` define uma área de exclusão fixa de raio 12 m com a
 formação atual. Antes de comandar o movimento, o UAV verifica o próximo intervalo
-contra as posições futuras do centro. Se houver risco, contorna tangencialmente,
+contra a área ao redor do centro fixo. Se houver risco, contorna tangencialmente,
 mantendo o sentido escolhido e adicionando movimento para fora quando necessário.
 A telemetria também reavalia o risco nos dois modos. A verificação inclui folga
 para a atualização padrão de 0,01 s do handler de mobilidade.
 
 A margem deve ser menor que o afastamento de contato, que deve ser menor que o
-alcance. O UAV externo precisa ser mais rápido que o centro. As posições iniciais
+alcance. As posições iniciais
 devem estar fora da área de exclusão; se já estiver dentro, o controle tenta sair
 radialmente, mas não pode desfazer uma invasão inicial. Não há prevenção de colisões
 entre os próprios externos.
@@ -204,29 +204,26 @@ O próprio simulador ainda pode emitir seus registros de início/fim em `INFO`.
 
 ### Velocidades e exibição
 
-Em `constants.py`, as referências são `CENTER_SPEED = 3.0` m/s e
-`ROTATION_SPEED = 1.5` m/s tangenciais ao círculo. Cada drone calcula seu próprio
-centro e destino usando o tempo simulado, com atualizações a cada 0,1 s.
-
-`FlightPlan(points, speed)` calcula a duração de cada trecho como distância / velocidade,
-incluindo o retorno ao primeiro ponto. Assim, diagonais levam mais tempo que lados
-menores, mantendo o módulo da velocidade do centro constante. A direção ainda muda
-instantaneamente nos vértices do plano poligonal.
+O centro virtual permanece em `(0, 0, 0)`. Não há trajeto de translação.
+`ROTATION_SPEED = 6.0` define a velocidade tangencial em m/s. Cada drone calcula
+seu destino usando o tempo simulado, com atualizações a cada 0,1 s.
 
 A velocidade angular é calculada como `degrees(ROTATION_SPEED / FORMATION_RADIUS)`.
-Com raio de 10 m, são aproximadamente 8,59 graus/s e uma volta a cada 41,89 s.
-Alterar o raio recalcula a velocidade angular ao iniciar o programa, preservando os
-1,5 m/s tangenciais. Rotação negativa inverte o sentido; zero desativa a rotação.
+Com raio de 10 m, são aproximadamente 34,38 graus/s e uma volta a cada 10,47 s.
+Alterar o raio recalcula a velocidade angular ao iniciar o programa, preservando
+os 6 m/s tangenciais. Rotação negativa inverte o sentido; zero desativa a rotação.
 
-`MOVEMENT_SPEED` é calculada com 20% de margem sobre a soma das velocidades:
-`1.2 * (CENTER_SPEED + abs(ROTATION_SPEED))`, atualmente 5,4 m/s. É a velocidade
-para alcançar os alvos no modelo de mobilidade, não a velocidade do centro.
-Os destinos definem a formação ideal; posições físicas podem apresentar pequeno
-atraso devido à atualização discreta e ao deslocamento entre destinos.
+`MOVEMENT_SPEED = 1.2 * abs(ROTATION_SPEED)` dá 20% de margem para alcançar os
+alvos, atualmente 7,2 m/s. Os destinos definem a formação ideal; posições físicas
+podem apresentar pequeno atraso devido à atualização discreta.
+
+`SIMULATION_DURATION` define a duração em segundos simulados, independentemente
+da rotação. O valor padrão de `250 / 3` (aproximadamente 83,33 s) preserva a duração
+anterior da execução.
 
 `REAL_TIME` controla apenas a exibição: `1.0` para tempo real, `0.5` para meia
-velocidade e `2.0` para o dobro. A relação entre translação e rotação no tempo
-simulado permanece igual. Os testes executam sem essa espera.
+velocidade e `2.0` para o dobro. O movimento no tempo simulado permanece igual.
+Os testes executam sem essa espera.
 
 O ritmo é aplicado pelo `RealTimeHandler`, com prazos absolutos calculados por
 relógio monotônico. O `real_time` nativo fica desativado: na versão instalada,

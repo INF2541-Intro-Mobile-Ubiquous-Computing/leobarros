@@ -45,8 +45,7 @@ class RadioDiscoveryTest(unittest.TestCase):
         core.provider.current_time.return_value = 0
         with patch.object(MovableCoreUAVProtocol, 'initialize'):
             core.initialize()
-        core.flight_plan = FlightPlan(constants.FLIGHT_PLAN_POINTS, constants.CENTER_SPEED,
-                                     constants.EXTERNAL_CORE_TARGETS, constants.DRONE_COUNT)
+        core.flight_plan = FlightPlan(constants.EXTERNAL_CORE_TARGETS, constants.DRONE_COUNT)
         core.random_motion = RandomCoreMotion(10, 6, 1, index * 40, random.Random(19))
         return core
 

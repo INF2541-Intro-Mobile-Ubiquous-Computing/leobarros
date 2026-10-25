@@ -20,7 +20,6 @@ class MovableCoreUAVProtocol (VisibleNodeProtocol):
         self.color = constants.PAIR_COLORS.get(self.provider.get_id(), constants.DEFAULT_COLOR)
         super().initialize()
         self.flight_plan = FlightPlan(
-            list(constants.FLIGHT_PLAN_POINTS), constants.CENTER_SPEED,
             constants.EXTERNAL_CORE_TARGETS, constants.DRONE_COUNT
         )
         # Estou contando que main.py adicione os drones em ordem, com IDs de 0 a DRONE_COUNT - 1.
@@ -44,7 +43,7 @@ class MovableCoreUAVProtocol (VisibleNodeProtocol):
             self.move_random()
 
     def move_random(self):
-        # Mira a próxima atualização física, compensando a translação do centro.
+        # Mira a próxima atualização física no disco de centro fixo.
         # A velocidade exata do passo evita atraso que deixaria o nó fora do disco.
         time = self.provider.current_time() + constants.RANDOM_MOVEMENT_INTERVAL
         self.center = self.flight_plan.get_position(time)

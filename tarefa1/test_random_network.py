@@ -47,7 +47,7 @@ class RandomNetworkTest(unittest.TestCase):
                 builder.add_handler(MetricsHandler(metrics))
                 builder.add_handler(ObservedCommunication(CommunicationMedium(transmission_range=constants.RADIO_RANGE)))
                 builder.add_handler(mobility)
-                center = constants.FLIGHT_PLAN_POINTS[0]
+                center = (0, 0, 0)
                 for index in range(constants.DRONE_COUNT):
                     builder.add_node(MessageTransmitterUAVProtocol, FlightPlan.position_on_circle(
                         center, constants.FORMATION_RADIUS, index * 360 / constants.DRONE_COUNT))
