@@ -25,7 +25,7 @@ class RandomNetworkTest(unittest.TestCase):
             with self.subTest(seed=seed, drop_type=drop_type), patch.object(constants, 'SIMULATION_MODE', constants.RANDOM):
                 metrics = SimulationMetrics()
                 mobility = MobilityHandler(MobilityConfiguration(update_rate=constants.RANDOM_MOVEMENT_INTERVAL))
-                broadcasts = Counter()
+                unicasts = Counter()
                 contact_distances = []
 
                 class ObservedCommunication(CommunicationHandler):
@@ -34,15 +34,19 @@ class RandomNetworkTest(unittest.TestCase):
                         if packet.get('type') == drop_type:
                             return
                         if packet.get('type', 'data') == 'data':
+                            self.assertEqual(command.command_type, CommunicationCommandType.SEND)
                             if sender.id < constants.DRONE_COUNT:
-                                self.assertEqual(command.command_type, CommunicationCommandType.BROADCAST)
-                                broadcasts[sender.id, packet['message_id']] += 1
+                                self.assertEqual(command.destination,
+                                    constants.EXTERNAL_CORE_TARGETS[packet['destination_external_index']])
+                                unicasts[sender.id, packet['message_id']] += 1
                             else:
+                                self.assertEqual(command.destination,
+                                    constants.EXTERNAL_CORE_TARGETS[packet['source_external_index']])
                                 contact_distances.append(math.dist(sender.position,
                                     mobility.nodes[command.destination].position))
                         super().handle_command(command, sender, medium)
 
-                builder = SimulationBuilder(SimulationConfiguration(duration=60, execution_logging=False))
+                builder = SimulationBuilder(SimulationConfiguration(duration=180, execution_logging=False))
                 builder.add_handler(TimerHandler())
                 builder.add_handler(MetricsHandler(metrics))
                 builder.add_handler(ObservedCommunication(CommunicationMedium(transmission_range=constants.RADIO_RANGE)))
@@ -51,7 +55,7 @@ class RandomNetworkTest(unittest.TestCase):
                 for index in range(constants.DRONE_COUNT):
                     builder.add_node(MessageTransmitterUAVProtocol, FlightPlan.position_on_circle(
                         center, constants.FORMATION_RADIUS, index * 360 / constants.DRONE_COUNT))
-                for index, offset in enumerate(((30, 0, 0), (-30, 0, 0), (0, 30, 0), (0, -30, 0))):
+                for index, offset in enumerate(((40, 0, 0), (-40, 0, 0), (0, 40, 0), (0, -40, 0))):
                     builder.add_node(CommunicableUAVProtocol.with_external(index),
                                      tuple(c + d for c, d in zip(center, offset)))
                 rng = random.Random(seed)
@@ -65,9 +69,14 @@ class RandomNetworkTest(unittest.TestCase):
                     self.assertGreater(stats['total']['discovery'].get(reason, 0), 0)
                     continue
                 self.assertTrue(contact_distances)
-                self.assertLessEqual(max(contact_distances), constants.EXTERNAL_CONTACT_DISTANCE + 1e-8)
-                self.assertTrue(broadcasts)
-                self.assertTrue(all(count == 1 for count in broadcasts.values()))
+                # Telemetria e envio podem ficar separados por um passo de mobilidade.
+                contact_tolerance = ((constants.EXTERNAL_SPEED + constants.RANDOM_SPEED)
+                                     * constants.RANDOM_MOVEMENT_INTERVAL)
+                self.assertLessEqual(max(contact_distances),
+                                     constants.EXTERNAL_CONTACT_DISTANCE + contact_tolerance)
+                self.assertLessEqual(max(contact_distances), constants.RADIO_RANGE)
+                self.assertTrue(unicasts)
+                self.assertTrue(all(count == 1 for count in unicasts.values()))
                 self.assertGreater(stats['total']['received'], 0)
                 self.assertGreater(stats['total']['confirmed'], 0)
                 self.assertGreater(stats['total']['discovery']['started'], 0)

@@ -34,7 +34,7 @@ class RadioDiscoveryTest(unittest.TestCase):
 
     def response(self, **overrides):
         packet = dict(self.request, type='position_plan', plan=dict(
-            reference_time=0, relative_position=[8, 0], velocity=[0, 0], valid_until=0.8))
+            reference_time=0, relative_position=[constants.FORMATION_RADIUS - 2, 0], velocity=[0, 0], valid_until=0.8))
         packet.update(overrides)
         return packet
 

@@ -44,9 +44,8 @@ EXTERNAL_AWAY_DURATION = 5.0  # segundos simulados
 EXTERNAL_CONTACT_TIMEOUT = 2.0  # tempo máximo da troca antes de se afastar
 EXTERNAL_CONTACT_RETRY_INTERVAL = 0.25  # repete a presença se houver perda
 EXTERNAL_CONTACT_DISTANCE = 5.0  # metros
-# Corda entre vizinhos + folga para o acompanhamento discreto da formação.
-RADIO_RANGE = max(EXTERNAL_CONTACT_DISTANCE,
-                  2 * FORMATION_RADIUS * math.sin(math.pi / DRONE_COUNT)) + 3.0
+# Alcance físico para unicast e broadcast; dados são enviados por unicast.
+RADIO_RANGE = 30.0  # metros
 EXTERNAL_INTERCEPT_STEP = 0.05  # resolução temporal da busca, em segundos
 SAFETY_MARGIN = 2.0  # área de exclusão: raio da formação + margem
 EXTERNAL_CONTACT_OFFSET = 3.0  # ponto de contato radialmente para fora do alvo

@@ -51,13 +51,16 @@ global nem atualiza silenciosamente o plano vencido. A validade não é renovada
 pelos retransmissores. `DISCOVERY_RESPONSE_TIMEOUT` e `DISCOVERY_PROBE_TIMEOUT`
 configuram os prazos; `RANDOM_DIRECTION_INTERVAL` controla a previsibilidade.
 
-O core retransmite os dados em broadcast no modo RANDOM. Cada nó retransmite cada
-`message_id` no máximo uma vez; o core alvo armazena a mensagem e não a retransmite.
-Os externos ignoram os broadcasts de dados e recebem suas mensagens pela troca
-confirmada com o core alvo. Presença, entrega e ACK continuam unicast.
+O core envia os dados por unicast diretamente ao core alvo no modo RANDOM, com
+alcance de 30 m. Cada nó encaminha cada `message_id` no máximo uma vez; o core alvo
+armazena a mensagem e não a retransmite. Não há retransmissão por nós intermediários:
+se o alvo estiver fora do alcance, esse envio não será entregue.
+Os externos recebem suas mensagens pela troca confirmada com o core alvo.
+Dados, presença, entrega e ACK usam unicast.
 Em TOPOLOGY, o roteamento pelo anel permanece igual. O alcance de rádio continua
-limitado, e uma rede desconectada ainda pode impedir a entrega: não há repetição
-periódica da inundação. Não há prevenção de colisões entre os membros do core.
+limitado, e a distância entre os nós ainda pode impedir a entrega: não há repetição
+periódica dos dados. A descoberta continua em broadcast. Não há prevenção de colisões
+entre os membros do core.
 
 ### UAV externo
 
@@ -148,11 +151,11 @@ Ao receber uma entrega, o externo também assume a cor do remetente por um segun
 simulado. O destaque dura esse segundo mesmo que o afastamento já tenha começado;
 depois, a cor normal é restaurada. Um novo recebimento reinicia esse intervalo.
 
-`RADIO_RANGE` cobre a corda entre vizinhos com 3 m de folga (aproximadamente
-23,52 m na configuração atual). O contato dos externos continua em 5 m.
+`RADIO_RANGE = 30.0` fixa o alcance físico em 30 m para unicast e broadcast,
+independentemente do raio da formação. O contato dos externos continua em 5 m.
 O envio é unicast ao vizinho escolhido, mesmo se outros nós estiverem no alcance.
-A folga é validada pelos cenários de teste, mas não constitui garantia para
-qualquer configuração de mobilidade. A fila e as confirmações cobrem a entrega
+A entrega depende de o receptor estar no alcance no instante do envio.
+A fila e as confirmações cobrem a entrega
 do core ao externo. O envio inicial do externo e os saltos pelo anel ainda não
 têm retransmissão automática em caso de perda de rádio. As filas e o histórico
 de mensagens recebidas/confirmadas ficam em memória durante a simulação.

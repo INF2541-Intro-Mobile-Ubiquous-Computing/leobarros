@@ -48,7 +48,7 @@ class MessageRoutingTest(unittest.TestCase):
         node.flight_plan = plan
         return node
 
-    def test_random_broadcasts_once_per_node_and_stops_at_target(self):
+    def test_random_unicasts_once_to_target_and_stops_at_target(self):
         with patch.object(constants, 'SIMULATION_MODE', constants.RANDOM):
             for index in (0, 1, 2):
                 node = self.core(index, self.plan())
@@ -60,8 +60,8 @@ class MessageRoutingTest(unittest.TestCase):
                 else:
                     node.provider.send_communication_command.assert_called_once()
                     command = node.provider.send_communication_command.call_args.args[0]
-                    self.assertEqual(command.command_type, CommunicationCommandType.BROADCAST)
-                    self.assertIsNone(command.destination)
+                    self.assertEqual(command.command_type, CommunicationCommandType.SEND)
+                    self.assertEqual(command.destination, 2)
 
     def test_routes_and_stop_at_target(self):
         for count, route in ((9, [2, 3, 4]), (9, [2, 1, 0, 8]),

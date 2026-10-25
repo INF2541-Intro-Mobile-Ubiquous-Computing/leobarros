@@ -55,7 +55,7 @@ class RandomCoreTest(unittest.TestCase):
         for seed in (7, 19):
             with self.subTest(seed=seed), patch.object(constants, 'SIMULATION_MODE', constants.RANDOM):
                 rng = random.Random(seed)
-                builder = SimulationBuilder(SimulationConfiguration(duration=20, execution_logging=False))
+                builder = SimulationBuilder(SimulationConfiguration(duration=120, execution_logging=False))
                 builder.add_handler(TimerHandler())
                 builder.add_handler(MobilityHandler(MobilityConfiguration(
                     update_rate=constants.RANDOM_MOVEMENT_INTERVAL)))

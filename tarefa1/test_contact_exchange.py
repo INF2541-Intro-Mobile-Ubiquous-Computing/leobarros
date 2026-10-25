@@ -225,7 +225,7 @@ class ContactExchangeTest(unittest.TestCase):
                 for index in range(constants.DRONE_COUNT):
                     builder.add_node(RecordingCore, FlightPlan.position_on_circle(
                         center, constants.FORMATION_RADIUS, index * 360 / constants.DRONE_COUNT))
-                for index, offset in enumerate(((30, 0, 0), (-30, 0, 0), (0, 30, 0), (0, -30, 0))):
+                for index, offset in enumerate(((40, 0, 0), (-40, 0, 0), (0, 40, 0), (0, -40, 0))):
                     builder.add_node(RecordingExternal.with_external(index),
                                      tuple(c + d for c, d in zip(center, offset)))
                 rng = random.Random(19)
