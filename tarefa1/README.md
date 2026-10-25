@@ -61,7 +61,7 @@ periódica da inundação. Não há prevenção de colisões entre os membros do
 
 ### UAV externo
 
-`main.py` adiciona quatro UAVs externos, depois dos membros do core, a 30 m do
+`main.py` adiciona quatro UAVs externos, depois dos membros do core, a 40 m do
 centro inicial: leste (alvo 0), oeste (alvo 2), norte (alvo 4) e sul (alvo 6).
 Cada classe configurada por `CommunicableUAVProtocol.with_external(index)`
 usa um índice externo próprio (0 a 3), independente do ID global (9 a 12).
@@ -91,7 +91,7 @@ radialmente para fora do alvo (`EXTERNAL_CONTACT_OFFSET`). A busca é recalculad
 a cada timer de movimento. É uma estimativa pelo caminho reto com passo de 0,05 s;
 os desvios de segurança podem atrasar o encontro, sem garantia de tempo mínimo.
 
-`SAFETY_MARGIN = 2.0` define uma área de exclusão fixa de raio 12 m com a
+`SAFETY_MARGIN = 2.0` define uma área de exclusão fixa de raio 32 m com a
 formação atual. Antes de comandar o movimento, o UAV verifica o próximo intervalo
 contra a área ao redor do centro fixo. Se houver risco, contorna tangencialmente,
 mantendo o sentido escolhido e adicionando movimento para fora quando necessário.
@@ -149,7 +149,7 @@ simulado. O destaque dura esse segundo mesmo que o afastamento já tenha começa
 depois, a cor normal é restaurada. Um novo recebimento reinicia esse intervalo.
 
 `RADIO_RANGE` cobre a corda entre vizinhos com 3 m de folga (aproximadamente
-9,84 m na configuração atual). O contato dos externos continua em 5 m.
+23,52 m na configuração atual). O contato dos externos continua em 5 m.
 O envio é unicast ao vizinho escolhido, mesmo se outros nós estiverem no alcance.
 A folga é validada pelos cenários de teste, mas não constitui garantia para
 qualquer configuração de mobilidade. A fila e as confirmações cobrem a entrega
@@ -209,7 +209,7 @@ O centro virtual permanece em `(0, 0, 0)`. Não há trajeto de translação.
 seu destino usando o tempo simulado, com atualizações a cada 0,1 s.
 
 A velocidade angular é calculada como `degrees(ROTATION_SPEED / FORMATION_RADIUS)`.
-Com raio de 10 m, são aproximadamente 34,38 graus/s e uma volta a cada 10,47 s.
+Com raio de 30 m (diâmetro de 60 m), são aproximadamente 11,46 graus/s e uma volta a cada 31,42 s.
 Alterar o raio recalcula a velocidade angular ao iniciar o programa, preservando
 os 6 m/s tangenciais. Rotação negativa inverte o sentido; zero desativa a rotação.
 

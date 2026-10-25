@@ -39,10 +39,10 @@ def main():
 
     # Deslocamentos em relação ao centro inicial: leste, oeste, norte e sul.
     external_drones = (
-        ((30, 0, 0), 0),
-        ((-30, 0, 0), 1),
-        ((0, 30, 0), 2),
-        ((0, -30, 0), 3),
+        ((40, 0, 0), 0),
+        ((-40, 0, 0), 1),
+        ((0, 40, 0), 2),
+        ((0, -40, 0), 3),
     )
     for offset, external_index in external_drones:
         position = tuple(c + d for c, d in zip(center, offset))

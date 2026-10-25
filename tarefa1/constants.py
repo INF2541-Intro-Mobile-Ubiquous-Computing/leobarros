@@ -27,7 +27,7 @@ MOVEMENT_INTERVAL = 0.1
 
 # Formação circular com centro virtual fixo em (0, 0, 0).
 ROTATION_SPEED = 6.0  # m/s tangenciais; negativo inverte a rotação.
-FORMATION_RADIUS = 10
+FORMATION_RADIUS = 30.0  # metros; diâmetro de 60 m.
 ANGULAR_SPEED = math.degrees(ROTATION_SPEED / FORMATION_RADIUS)  # graus/s
 DRONE_COUNT = 9
 # Índices próprios dos externos, independentes dos IDs globais do simulador.
