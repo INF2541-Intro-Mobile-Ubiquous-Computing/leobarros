@@ -163,21 +163,22 @@ O próprio simulador ainda pode emitir seus registros de início/fim em `INFO`.
 ### Velocidades e exibição
 
 O centro virtual permanece em `(0, 0, 0)`. Não há trajeto de translação.
-`ROTATION_SPEED = 6.0` define a velocidade tangencial em m/s. Cada drone calcula
-seu destino usando o tempo simulado, com atualizações a cada 0,1 s.
+`ANGULAR_SPEED = 360.0 / (60 * 60)` define 0,1 grau/s, ou 6 graus/min:
+uma volta completa em 60 minutos (3.600 segundos) simulados no modo TOPOLOGY.
+Cada drone calcula seu destino usando o tempo simulado, com atualizações a cada 0,1 s.
 
-A velocidade angular é calculada como `degrees(ROTATION_SPEED / FORMATION_RADIUS)`.
-Com raio de 30 m (diâmetro de 60 m), são aproximadamente 11,46 graus/s e uma volta a cada 31,42 s.
-Alterar o raio recalcula a velocidade angular ao iniciar o programa, preservando
-os 6 m/s tangenciais. Rotação negativa inverte o sentido; zero desativa a rotação.
+`ROTATION_SPEED = radians(ANGULAR_SPEED) * FORMATION_RADIUS` calcula a velocidade
+tangencial em m/s. Com raio de 30 m, ela é aproximadamente 0,05236 m/s.
+Alterar o raio preserva a velocidade angular e recalcula a velocidade tangencial.
+Velocidade angular negativa inverte o sentido; zero desativa a rotação.
 
 `MOVEMENT_SPEED = 1.2 * abs(ROTATION_SPEED)` dá 20% de margem para alcançar os
-alvos, atualmente 7,2 m/s. Os destinos definem a formação ideal; posições físicas
+alvos, atualmente cerca de 0,06283 m/s. Os destinos definem a formação ideal; posições físicas
 podem apresentar pequeno atraso devido à atualização discreta.
 
 `SIMULATION_DURATION` define a duração em segundos simulados, independentemente
 da rotação. O valor padrão de `250 / 3` (aproximadamente 83,33 s) preserva a duração
-anterior da execução.
+anterior da execução. Para observar uma volta completa, configure pelo menos 3.600 s.
 
 `REAL_TIME` controla apenas a exibição: `1.0` para tempo real, `0.5` para meia
 velocidade e `2.0` para o dobro. O movimento no tempo simulado permanece igual.

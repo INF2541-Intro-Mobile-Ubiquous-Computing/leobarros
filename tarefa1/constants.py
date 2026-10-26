@@ -6,7 +6,7 @@ LOG_LEVEL = 'WARNING'
 TOPOLOGY = 'TOPOLOGY'
 RANDOM = 'RANDOM'
 SIMULATION_MODE = TOPOLOGY
-SIMULATION_DURATION = 250 / 3  # segundos simulados; preserva a duração anterior
+SIMULATION_DURATION = 3600  # segundos simulados; preserva a duração anterior
 RANDOM_DIRECTION_INTERVAL = 1.0  # novo rumo a cada segundo ou ao atingir a borda
 RANDOM_SPEED = 6.0  # m/s em relação ao centro fixo
 RANDOM_MOVEMENT_INTERVAL = 0.01  # deve coincidir com a atualização de mobilidade
@@ -24,7 +24,7 @@ MESSAGE_COLOR_DURATION = 1.0
 MOVEMENT_INTERVAL = 0.1
 
 # Formação circular com centro virtual fixo em (0, 0, 0).
-ROTATION_SPEED = 6.0  # m/s tangenciais; negativo inverte a rotação.
+ROTATION_SPEED = math.pi / 60  # m/s tangenciais; negativo inverte a rotação.
 FORMATION_RADIUS = 30.0  # metros; diâmetro de 60 m.
 ANGULAR_SPEED = math.degrees(ROTATION_SPEED / FORMATION_RADIUS)  # graus/s
 DRONE_COUNT = 9
@@ -33,7 +33,7 @@ EXTERNAL_CORE_TARGETS = {0: 0, 1: 2, 2: 4, 3: 6}
 EXTERNAL_DESTINATIONS = {0: 1, 1: 0, 2: 3, 3: 2}
 # Velocidade para alcançar os alvos, com 20% de margem sobre a referência máxima.
 MOVEMENT_SPEED = 1.2 * abs(ROTATION_SPEED)
-REAL_TIME = 1.0  # 1: tempo real; 0.5: meia velocidade; 2: dobro da velocidade.
+REAL_TIME = 10.0  # 1: tempo real; 0.5: meia velocidade; 2: dobro da velocidade.
 
 # UAV externo: trajeto axial entre o lado da caixa e o ponto de retorno.
 EXTERNAL_TARGET_INDEX = 0
