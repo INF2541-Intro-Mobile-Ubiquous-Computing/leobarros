@@ -1,12 +1,12 @@
 import logging
 import json
+import math
 
 from gradysim.protocol.messages.communication import CommunicationCommand, CommunicationCommandType
 
 import constants
 from movable_core_uav_protocol import MovableCoreUAVProtocol
 from communication_packets import validate_contact_packet, validate_data_packet
-from radio_discovery import DISCOVERY_TYPES, validate_discovery
 
 
 class MessageTransmitterUAVProtocol(MovableCoreUAVProtocol):
@@ -17,8 +17,6 @@ class MessageTransmitterUAVProtocol(MovableCoreUAVProtocol):
         self.confirmed_messages = set()
         self.contacts = {}
         self.seen_messages = set()
-        self.seen_discovery = {}
-        self.advertised_plans = {}
         super().initialize()
 
     def handle_packet(self, message):
@@ -27,8 +25,11 @@ class MessageTransmitterUAVProtocol(MovableCoreUAVProtocol):
             packet = json.loads(message)
             if not isinstance(packet, dict):
                 raise ValueError('O envelope deve ser um objeto JSON.')
-            if constants.SIMULATION_MODE == constants.RANDOM and packet.get('type') in DISCOVERY_TYPES:
-                self.handle_discovery(packet)
+            if packet.get('type') == 'station_request':
+                self.handle_station_request(packet)
+                return
+            if packet.get('type') == 'contact_relay':
+                self.handle_relay(packet)
                 return
             if packet.get('type') in ('presence', 'ack'):
                 self.handle_contact_packet(packet)
@@ -75,17 +76,23 @@ class MessageTransmitterUAVProtocol(MovableCoreUAVProtocol):
 
     def handle_contact_packet(self, packet):
         external, target = validate_contact_packet(packet, self.flight_plan)
+        relay = packet.get('relay_core', target)
+        if type(relay) is not int or not 0 <= relay < constants.DRONE_COUNT:
+            raise ValueError('Core de contato inválido.')
         if target != self.provider.get_id():
-            raise ValueError('Contato dirigido ao core errado.')
+            if relay != self.provider.get_id():
+                raise ValueError('Contato dirigido ao core errado.')
+            self.route_contact(target, packet)
+            return
         session_id = packet['session_id']
         contact = self.contacts.get(external)
         if packet['type'] == 'presence':
             if contact is not None and session_id < contact['session_id']:
                 return
             if contact is None or session_id > contact['session_id']:
-                contact = dict(session_id=session_id, node_id=packet['node_id'], offered=set())
+                contact = dict(session_id=session_id, node_id=packet['node_id'], relay_core=relay, offered=set())
                 self.contacts[external] = contact
-            elif contact['node_id'] != packet['node_id']:
+            elif contact['node_id'] != packet['node_id'] or contact['relay_core'] != relay:
                 raise ValueError('ID externo diferente durante a mesma sessão.')
             self.send_pending(external, contact)
         else:
@@ -93,7 +100,7 @@ class MessageTransmitterUAVProtocol(MovableCoreUAVProtocol):
             if not isinstance(message_id, str) or not message_id:
                 raise ValueError('Confirmação sem identificador de mensagem válido.')
             if (contact is None or session_id != contact['session_id']
-                    or packet['node_id'] != contact['node_id']
+                    or packet['node_id'] != contact['node_id'] or relay != contact['relay_core']
                     or message_id not in contact['offered']):
                 return
             stored = self.pending_messages.get(message_id)
@@ -117,43 +124,79 @@ class MessageTransmitterUAVProtocol(MovableCoreUAVProtocol):
             self.send_contact_response('contact_complete', external, contact)
 
     def send_contact_response(self, kind, external, contact, **fields):
-        response = dict(type=kind, external_index=external, core_id=self.provider.get_id(),
+        relay = contact['relay_core']
+        response = dict(type=kind, external_index=external, core_id=relay,
                         session_id=contact['session_id'], **fields)
-        self.record_metric('transmission', fields.get('packet'), kind=kind)
-        self.provider.send_communication_command(CommunicationCommand(
-            CommunicationCommandType.SEND, json.dumps(response), contact['node_id']))
+        if relay == self.provider.get_id():
+            self.record_metric('transmission', fields.get('packet'), kind=kind)
+            self.provider.send_communication_command(CommunicationCommand(
+                CommunicationCommandType.SEND, json.dumps(response), contact['node_id']))
+        else:
+            self.route_contact(relay, response, contact['node_id'])
 
-    def handle_discovery(self, packet):
-        validate_discovery(packet, self.flight_plan)
-        now = self.provider.current_time()
-        self.seen_discovery = {key: expiry for key, expiry in self.seen_discovery.items() if expiry > now}
-        self.advertised_plans = {key: value for key, value in self.advertised_plans.items()
-                                 if value['plan']['valid_until'] > now}
-        kind = packet['type']
-        if kind == 'contact_ready':
-            return  # A confirmação é exclusivamente direta, nunca retransmitida.
-        if kind == 'contact_probe':
-            advertised = self.advertised_plans.get(packet['request_id'])
-            if (packet['target_core'] == self.provider.get_id() and advertised is not None
-                    and advertised['requester_id'] == packet['requester_id']
-                    and advertised['external_index'] == packet['external_index']):
-                response = dict(advertised, type='contact_ready')
-                self.record_metric('transmission', kind='contact_ready')
-                self.provider.send_communication_command(CommunicationCommand(
-                    CommunicationCommandType.SEND, json.dumps(response), packet['requester_id']))
+    def handle_station_request(self, packet):
+        self.flight_plan.get_core_target(packet.get('external_index'))
+        if (type(packet.get('node_id')) is not int or packet['node_id'] < constants.DRONE_COUNT
+                or not isinstance(packet.get('request_id'), str)):
+            raise ValueError('Solicitação de encontro inválida.')
+        expiry = packet.get('expires_at')
+        position = packet.get('position')
+        if (type(expiry) not in (int, float) or not math.isfinite(expiry)
+                or not isinstance(position, (list, tuple)) or len(position) != 3
+                or any(type(x) not in (int, float) or not math.isfinite(x) for x in position)):
+            raise ValueError('Posição ou prazo de encontro inválido.')
+        if self.provider.current_time() >= expiry:
             return
-        expiry = packet['query_expires_at'] if kind == 'position_request' else packet['plan']['valid_until']
-        key = (kind, packet['request_id'])
-        if now >= expiry or key in self.seen_discovery:
+        # Usa somente a própria telemetria e a posição anunciada pelo externo.
+        own_position = getattr(self, 'current_position', None)
+        if own_position is None or math.dist(own_position, position) > constants.EXTERNAL_CONTACT_DISTANCE:
             return
-        self.seen_discovery[key] = expiry
-        if kind == 'position_request' and packet['target_core'] == self.provider.get_id():
-            plan = self.random_motion.mini_plan()
-            if plan['valid_until'] <= plan['reference_time']:
-                return
-            packet = dict(packet, type='position_plan', plan=plan)
-            self.advertised_plans[packet['request_id']] = packet
-            self.seen_discovery['position_plan', packet['request_id']] = plan['valid_until']
-        self.record_metric('transmission', kind=packet['type'])
+        response = dict(type='station_offer', request_id=packet['request_id'],
+                        external_index=packet['external_index'], core_id=self.provider.get_id())
+        self.record_metric('transmission', kind='station_offer')
         self.provider.send_communication_command(CommunicationCommand(
-            CommunicationCommandType.BROADCAST, json.dumps(packet)))
+            CommunicationCommandType.SEND, json.dumps(response), packet['node_id']))
+
+    def route_contact(self, target, packet, external_node_id=None):
+        envelope = dict(type='contact_relay', target_core=target, packet=packet,
+                        external_node_id=external_node_id, hops_left=constants.DRONE_COUNT,
+                        expires_at=self.provider.current_time() + constants.EXTERNAL_CONTACT_TIMEOUT)
+        self.handle_relay(envelope)
+
+    def handle_relay(self, envelope):
+        target = envelope.get('target_core')
+        hops = envelope.get('hops_left')
+        expiry = envelope.get('expires_at')
+        packet = envelope.get('packet')
+        if (type(target) is not int or not 0 <= target < constants.DRONE_COUNT
+                or type(hops) is not int or not 0 <= hops <= constants.DRONE_COUNT
+                or type(expiry) not in (int, float) or not math.isfinite(expiry)
+                or not isinstance(packet, dict)
+                or packet.get('type') not in ('presence', 'ack', 'delivery', 'contact_complete')):
+            raise ValueError('Encaminhamento de contato inválido.')
+        if self.provider.current_time() >= expiry:
+            return
+        node = self.provider.get_id()
+        if node == target:
+            if packet['type'] in ('presence', 'ack'):
+                self.handle_contact_packet(packet)
+            else:
+                external = envelope.get('external_node_id')
+                if type(external) is not int or external < constants.DRONE_COUNT:
+                    raise ValueError('Destinatário externo inválido.')
+                self.record_metric('transmission', packet.get('packet'), kind=packet['type'])
+                self.provider.send_communication_command(CommunicationCommand(
+                    CommunicationCommandType.SEND, json.dumps(packet), external))
+            return
+        if hops == 0:
+            return
+        if constants.SIMULATION_MODE == constants.TOPOLOGY:
+            increasing = (target - node) % constants.DRONE_COUNT
+            decreasing = (node - target) % constants.DRONE_COUNT
+            next_hop = (node + (1 if increasing <= decreasing else -1)) % constants.DRONE_COUNT
+        else:
+            next_hop = target
+        envelope = dict(envelope, hops_left=hops - 1)
+        self.record_metric('transmission', kind='contact_relay')
+        self.provider.send_communication_command(CommunicationCommand(
+            CommunicationCommandType.SEND, json.dumps(envelope), next_hop))

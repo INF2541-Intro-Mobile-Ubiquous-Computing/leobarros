@@ -20,119 +20,76 @@ define o intervalo de sorteio (1 s). O centro permanece fixo.
 `RANDOM_MOVEMENT_INTERVAL` sincroniza comandos e atualizações físicas (0,01 s),
 para manter as posições dentro do disco.
 
-No modo RANDOM, os externos podem atravessar o círculo: não há teste de área de
-exclusão nem desvio de colisão, e o ponto de contato não recebe o afastamento
-radial de segurança. O contato é confirmado por uma troca direta de mensagens.
-As regras de segurança continuam ativas no modo TOPOLOGY.
+### UAV externo: bounding box e movimento axial
 
-No modo RANDOM, o externo aproxima-se da posição nominal do alvo no plano comum.
-Ao chegar à distância de contato desse ponto, transmite `position_request` em
-broadcast. Cada nó do core retransmite a consulta uma vez, até seu prazo expirar.
-O alvo responde com `position_plan`, também disseminado por broadcast com controle
-de duplicatas. Não há consulta a posições de outros nós no simulador.
+Os externos usam o mesmo movimento em `TOPOLOGY` e `RANDOM`. A bounding box é
+invisível, centrada na origem, com lados a `FORMATION_RADIUS + EXTERNAL_CONTACT_OFFSET`
+do centro: atualmente 33 m. Cada satélite tem um ponto de contato fixo no meio de
+um lado. `EXTERNAL_DIRECTIONS` associa 0 a leste, 1 a oeste, 2 a norte e 3 a sul.
 
-O mini plano contém instante de referência, posição relativa ao centro, velocidade
-relativa e validade até o próximo sorteio de direção ou encontro com a borda,
-o que ocorrer primeiro. O externo combina esse trecho com o plano comum e procura
-um ponto alcançável antes da expiração. Os nós usam o relógio simulado comum;
-não se modelam erros de GPS ou de sincronização. O plano descreve somente o trecho
-já decidido, sem sortear nem antecipar novos rumos para responder à consulta.
+| Externo | Ponto de contato | Posição inicial e de retorno |
+| --- | --- | --- |
+| 0 (E) | (33, 0, 0) | (63, 0, 0) |
+| 1 (W) | (-33, 0, 0) | (-63, 0, 0) |
+| 2 (N) | (0, 33, 0) | (0, 63, 0) |
+| 3 (S) | (0, -33, 0) | (0, -63, 0) |
 
-Ao aproximar-se do ponto previsto, o externo envia `contact_probe` diretamente ao
-alvo. Só uma resposta direta `contact_ready`, recebida dentro do prazo, autoriza
-a emissão dos dados e a troca de presença/entrega/ACK. Essa confirmação não é
-retransmitida pelo core: uma resposta vinda por múltiplos saltos não prova contato.
-Broadcasts ou mensagens de descoberta não mudam a cor dos drones.
+O ciclo começa pela aproximação em linha reta. Ao alcançar o ponto de contato,
+o satélite para e espera pelo primeiro nó do Core que responder estando a até
+`EXTERNAL_CONTACT_DISTANCE = 5.0` m. Não há tempo limite para essa espera.
+Durante a troca, o satélite permanece parado. Ao concluir a troca (ou ao vencer
+o prazo de comunicação de 2 s), afasta-se no mesmo eixo até ficar a
+`EXTERNAL_AWAY_DISTANCE = 30.0` m do ponto de contato e inicia nova aproximação.
+A inversão depende de alcançar o destino, não de uma duração de afastamento.
+`EXTERNAL_SPEED = 24.0` controla a velocidade em m/s. Não há sorteio de direção,
+perseguição, interceptação nem travessia do círculo. A caixa permanece fora da
+área de exclusão de raio `FORMATION_RADIUS + SAFETY_MARGIN = 32` m.
 
-Se não houver resposta à consulta, o mini plano estiver vencido, não houver ponto
-alcançável ou a confirmação direta não chegar a tempo, o externo inicia seu ciclo
-de afastamento e tenta novamente na próxima aproximação. Não consulta uma posição
-global nem atualiza silenciosamente o plano vencido. A validade não é renovada
-pelos retransmissores. `DISCOVERY_RESPONSE_TIMEOUT` e `DISCOVERY_PROBE_TIMEOUT`
-configuram os prazos; `RANDOM_DIRECTION_INTERVAL` controla a previsibilidade.
+Enquanto espera, o externo anuncia seu ponto com `station_request` em broadcast,
+a cada `EXTERNAL_CONTACT_RETRY_INTERVAL = 0.25` s. Cada Core compara a posição
+anunciada com sua própria telemetria; somente se estiver a até 5 m responde por
+unicast (`station_offer`). A primeira resposta válida escolhe o nó de contato
+para aquela sessão. Respostas antigas e outras ofertas durante a troca são
+ignoradas. Nenhum nó consulta posições globais do simulador. A descoberta não
+é retransmitida e não altera a cor dos drones. Os dados do externo são enviados
+por unicast exclusivamente ao nó escolhido; o alcance físico continua em 30 m.
 
-O core envia os dados por unicast diretamente ao core alvo no modo RANDOM, com
-alcance de 30 m. Cada nó encaminha cada `message_id` no máximo uma vez; o core alvo
-armazena a mensagem e não a retransmite. Não há retransmissão por nós intermediários:
-se o alvo estiver fora do alcance, esse envio não será entregue.
-Os externos recebem suas mensagens pela troca confirmada com o core alvo.
-Dados, presença, entrega e ACK usam unicast.
-Em TOPOLOGY, o roteamento pelo anel permanece igual. O alcance de rádio continua
-limitado, e a distância entre os nós ainda pode impedir a entrega: não há repetição
-periódica dos dados. A descoberta continua em broadcast. Não há prevenção de colisões
-entre os membros do core.
+O movimento está em `MovableExternalUAVProtocol`; a espera por rádio e a troca
+estão em `CommunicableUAVProtocol`. Os pontos usados pelo `main.py` e pelo
+protocolo são calculados pela mesma função `station_position`.
 
-### UAV externo
-
-`main.py` adiciona quatro UAVs externos, depois dos membros do core, a 40 m do
-centro inicial: leste (alvo 0), oeste (alvo 2), norte (alvo 4) e sul (alvo 6).
-Cada classe configurada por `CommunicableUAVProtocol.with_external(index)`
-usa um índice externo próprio (0 a 3), independente do ID global (9 a 12).
-As posições ficam na lista `external_drones`; os alvos são consultados no plano de
-voo, a partir de `EXTERNAL_CORE_TARGETS` em `constants.py`.
-`MovableExternalUAVProtocol` cuida do movimento, sem enviar mensagens.
-A posição inicial é recebida pela telemetria do próprio UAV.
-
-Os parâmetros em `constants.py` são:
-
-- `EXTERNAL_TARGET_INDEX = 0`: alvo padrão quando não indicado por `with_target`.
-- `EXTERNAL_SPEED = 24.0`: velocidade de deslocamento em m/s.
-- `EXTERNAL_AWAY_DURATION = 5.0`: duração do afastamento em segundos simulados.
-- `EXTERNAL_CONTACT_DISTANCE = 5.0`: distância suficiente para considerar contato.
-- `EXTERNAL_CONTACT_TIMEOUT = 2.0`: limite da troca de mensagens em segundos simulados.
-- `EXTERNAL_CONTACT_RETRY_INTERVAL = 0.25`: intervalo entre novas tentativas de contato.
-- `EXTERNAL_INTERCEPT_STEP = 0.05`: passo temporal da procura por uma interceptação.
-
-No afastamento, uma direção no plano XY é sorteada no semiplano orientado para
-fora do centro virtual e mantida como direção preferencial durante o período.
-O controle de segurança pode desviá-la temporariamente. Essa orientação é
-definida no início; o centro permanece na origem.
-
-Na busca, o UAV prevê a rotação do alvo a partir do plano e procura
-o primeiro instante da grade temporal em que consegue alcançar um ponto 3 m
-radialmente para fora do alvo (`EXTERNAL_CONTACT_OFFSET`). A busca é recalculada
-a cada timer de movimento. É uma estimativa pelo caminho reto com passo de 0,05 s;
-os desvios de segurança podem atrasar o encontro, sem garantia de tempo mínimo.
-
-`SAFETY_MARGIN = 2.0` define uma área de exclusão fixa de raio 32 m com a
-formação atual. Antes de comandar o movimento, o UAV verifica o próximo intervalo
-contra a área ao redor do centro fixo. Se houver risco, contorna tangencialmente,
-mantendo o sentido escolhido e adicionando movimento para fora quando necessário.
-A telemetria também reavalia o risco nos dois modos. A verificação inclui folga
-para a atualização padrão de 0,01 s do handler de mobilidade.
-
-A margem deve ser menor que o afastamento de contato, que deve ser menor que o
-alcance. As posições iniciais
-devem estar fora da área de exclusão; se já estiver dentro, o controle tenta sair
-radialmente, mas não pode desfazer uma invasão inicial. Não há prevenção de colisões
-entre os próprios externos.
-
-O contato é verificado a cada telemetria contra a posição prevista do alvo.
-Ao atingir a distância configurada, o UAV comunicável inicia a troca de mensagens
-e acompanha o ponto de contato móvel, preservando o controle de segurança.
-Ele só sorteia outro afastamento quando o core informa o fim da troca ou quando
-o tempo limite expira. Não é necessário encostar no alvo.
 ### Para executar
 python main.py
 
 ### Comunicação pelo core
 
 `EXTERNAL_CORE_TARGETS = {0: 0, 1: 2, 2: 4, 3: 6}` associa cada externo ao
-seu nó de encontro. Mobilidade e retransmissão consultam a mesma configuração
-através de `FlightPlan.get_core_target`. `EXTERNAL_DESTINATIONS` define os pares
+seu nó de armazenamento (caixa postal), consultado por `FlightPlan.get_core_target`.
+Essa associação não restringe qual nó pode atender o externo no ponto de contato. `EXTERNAL_DESTINATIONS` define os pares
 fixos `0 ↔ 1` e `2 ↔ 3`.
 
-Ao encontrar seu alvo, o externo envia um JSON com `message_id` (índice externo
+Ao confirmar o encontro com um nó do Core, o externo envia um JSON com `message_id` (índice externo
 e sequência local), `source_external_index`, `source_color`, `destination_external_index` e
 `payload`. Cada encontro gera uma nova mensagem antes do afastamento.
 
-Os nove membros do core usam `MessageTransmitterUAVProtocol`. Cada receptor
+Os nove membros do core usam `MessageTransmitterUAVProtocol`. Em TOPOLOGY, cada receptor
 consulta no plano o alvo do destinatário externo e encaminha apenas ao vizinho
 que reduz o número de saltos no anel. Exemplos: `2 → 3 → 4` e `2 → 1 → 0 → 8`.
 Em empate, prefere índices crescentes. Cada receptor, incluindo o core alvo,
 assume a cor do emissor por um segundo e depois restaura sua cor original.
 O core alvo registra a chegada e guarda a mensagem em `pending_messages`. Mensagens
 inválidas e índices externos desconhecidos são descartados com log de aviso.
+
+No modo RANDOM, permanece a disseminação dos dados em broadcast pelo Core,
+com supressão de duplicatas por `message_id` e armazenamento na caixa postal.
+
+Quando o nó encontrado é diferente da caixa postal, ele encaminha `presence` e
+`ack` até ela em envelopes `contact_relay`. As respostas voltam pelo nó de
+contato e seguem por unicast ao externo. Em TOPOLOGY, esses envelopes percorrem
+o anel; em RANDOM, são enviados diretamente ao nó de destino e dependem de ele
+estar a até 30 m. Os envelopes têm limite de saltos e prazo de validade. Filas
+não confirmadas permanecem na caixa postal, mesmo que o próximo encontro seja
+com outro nó. Nenhum compartilhamento global de filas é usado.
 
 Ao entrar em contato, o externo envia `presence`, com seu índice, ID real do
 simulador e uma sessão nova a cada encontro. O core responde com `delivery`
@@ -153,7 +110,7 @@ depois, a cor normal é restaurada. Um novo recebimento reinicia esse intervalo.
 
 `RADIO_RANGE = 30.0` fixa o alcance físico em 30 m para unicast e broadcast,
 independentemente do raio da formação. O contato dos externos continua em 5 m.
-O envio é unicast ao vizinho escolhido, mesmo se outros nós estiverem no alcance.
+No anel, o envio é unicast ao vizinho escolhido, mesmo se outros nós estiverem no alcance.
 A entrega depende de o receptor estar no alcance no instante do envio.
 A fila e as confirmações cobrem a entrega
 do core ao externo. O envio inicial do externo e os saltos pelo anel ainda não
@@ -184,11 +141,9 @@ comprovam perda definitiva. Uma mensagem recebida sem ACK não é considerada
 “não entregue”; ela aparece como recebida sem confirmação. Retransmissões não
 duplicam as contagens de mensagens nem alteram os instantes da primeira entrega.
 
-O relatório também conta consultas de descoberta, consultas sem resposta,
-respostas recebidas já vencidas, interceptações frustradas (inclui mini planos
-sem ponto alcançável, expiração durante a busca e confirmação direta ausente)
-e contatos confirmados por rádio. Consultas não produzem mensagens de aplicação:
-as mensagens emitidas só são contadas após o contato direto confirmado.
+O relatório também conta anúncios de espera e encontros confirmados por rádio.
+Anúncios não produzem mensagens de aplicação: as mensagens emitidas só são
+contadas após a seleção do primeiro Core que responde ao ponto de contato.
 
 ### Configuração de logs
 

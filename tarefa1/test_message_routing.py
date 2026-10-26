@@ -48,7 +48,7 @@ class MessageRoutingTest(unittest.TestCase):
         node.flight_plan = plan
         return node
 
-    def test_random_unicasts_once_to_target_and_stops_at_target(self):
+    def test_random_broadcasts_once_and_stops_at_mailbox(self):
         with patch.object(constants, 'SIMULATION_MODE', constants.RANDOM):
             for index in (0, 1, 2):
                 node = self.core(index, self.plan())
@@ -60,8 +60,8 @@ class MessageRoutingTest(unittest.TestCase):
                 else:
                     node.provider.send_communication_command.assert_called_once()
                     command = node.provider.send_communication_command.call_args.args[0]
-                    self.assertEqual(command.command_type, CommunicationCommandType.SEND)
-                    self.assertEqual(command.destination, 2)
+                    self.assertEqual(command.command_type, CommunicationCommandType.BROADCAST)
+                    self.assertIsNone(command.destination)
 
     def test_routes_and_stop_at_target(self):
         for count, route in ((9, [2, 3, 4]), (9, [2, 1, 0, 8]),
@@ -144,23 +144,21 @@ class MessageRoutingTest(unittest.TestCase):
         with patch.object(constants, 'EXTERNAL_CORE_TARGETS', {0: 8, 1: 2}), \
              patch('movable_external_uav_protocol.VisibleNodeProtocol.initialize'):
             drone.initialize()
-        self.assertEqual(drone.target_index, 8)
-        with patch.object(MovableExternalUAVProtocol, 'start_away'), \
-             patch.object(drone, 'in_contact', return_value=False):
-            drone.start_away(0)
+        self.assertIsNone(drone.target_index)
+        drone.start_contact(0)
         drone.provider.send_communication_command.assert_not_called()
-        with patch.object(MovableExternalUAVProtocol, 'start_away'), \
-             patch.object(drone, 'in_contact', return_value=True), patch.object(drone, 'steer'):
-            drone.start_away(1)
-            drone.start_away(1.1)
-            self.assertEqual(drone.message_sequence, 1)
-            self.assertEqual(drone.mode, 'contact')
-            drone.mode = 'seek'
-            drone.start_away(2)
+        drone.current_position = drone.contact_point
+        drone.mode = 'waiting'
+        drone.target_index = 5  # O nó encontrado é diferente da caixa postal 8.
+        drone.start_contact(1)
+        drone.start_contact(1.1)
+        self.assertEqual(drone.message_sequence, 1)
+        drone.mode = 'waiting'
+        drone.start_contact(2)
         commands = drone.provider.send_communication_command.call_args_list
         packets = [json.loads(call.args[0].message) for call in commands
                    if json.loads(call.args[0].message)['type'] == 'data']
-        self.assertEqual([call.args[0].destination for call in commands], [8, 8, 8, 8])
+        self.assertEqual([call.args[0].destination for call in commands], [5, 5, 5, 5])
         self.assertEqual([packet['message_id'] for packet in packets], ['0:1', '0:2'])
         self.assertEqual(packets[0]['source_external_index'], 0)
         self.assertEqual(packets[0]['source_color'], list(drone.color))
@@ -190,7 +188,7 @@ class MessageRoutingTest(unittest.TestCase):
                 for index in range(constants.DRONE_COUNT):
                     builder.add_node(MessageTransmitterUAVProtocol, FlightPlan.position_on_circle(
                         center, constants.FORMATION_RADIUS, index * 360 / constants.DRONE_COUNT))
-                for index, offset in enumerate(((30, 0, 0), (-30, 0, 0), (0, 30, 0), (0, -30, 0))):
+                for index, offset in enumerate(((63, 0, 0), (-63, 0, 0), (0, 63, 0), (0, -63, 0))):
                     builder.add_node(CommunicableUAVProtocol.with_external(index),
                                      tuple(c + d for c, d in zip(center, offset)))
                 original = MessageTransmitterUAVProtocol.handle_packet
@@ -207,14 +205,16 @@ class MessageRoutingTest(unittest.TestCase):
 
                 rng = random.Random(seed)
                 with patch.object(MessageTransmitterUAVProtocol, 'handle_packet', receive), \
-                     patch('movable_external_uav_protocol.random.uniform', side_effect=rng.uniform), \
                      patch('message_transmitter_uav_protocol.logging.debug', side_effect=observe_log):
                     builder.build().start_simulation()
                 self.assertEqual({p['source_external_index'] for p in sent.values()}, {0, 1, 2, 3})
                 self.assertCountEqual(delivered, sent.keys())
-                expected_routes = {0: [0, 1, 2], 1: [2, 1, 0], 2: [4, 5, 6], 3: [6, 5, 4]}
-                for message_id, packet in sent.items():
-                    self.assertEqual(routes[message_id], expected_routes[packet['source_external_index']])
+                for message_id, route in routes.items():
+                    packet = sent[message_id]
+                    self.assertEqual(route[-1], constants.EXTERNAL_CORE_TARGETS[packet['destination_external_index']])
+                    for left, right in zip(route, route[1:]):
+                        self.assertIn((right - left) % constants.DRONE_COUNT, (1, constants.DRONE_COUNT - 1))
+
 
 
 if __name__ == '__main__':

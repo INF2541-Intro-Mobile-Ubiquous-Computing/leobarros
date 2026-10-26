@@ -1,6 +1,5 @@
 import io
 import logging
-import random
 import unittest
 from unittest.mock import patch
 
@@ -27,15 +26,13 @@ class SimulationLoggingTest(unittest.TestCase):
                 with self.subTest(level=level):
                     output = io.StringIO()
                     report = io.StringIO()
-                    rng = random.Random(19)
                     with patch.object(constants, 'LOG_LEVEL', level), \
                          patch.object(constants, 'SIMULATION_MODE', constants.TOPOLOGY), \
                          patch.object(root, 'handlers', []), \
                          patch('sys.stderr', output), \
                          patch('sys.stdout', report), \
                          patch.object(main, 'PacedVisualizationHandler', side_effect=lambda pacer: pacer), \
-                         patch.object(SimulationBuilder, 'add_handler', add_handler), \
-                         patch('movable_external_uav_protocol.random.uniform', side_effect=rng.uniform):
+                         patch.object(SimulationBuilder, 'add_handler', add_handler):
                         main.main()
                     logs = output.getvalue()
                     self.assertIn('Métricas da simulação', report.getvalue())

@@ -37,16 +37,10 @@ def main():
             FlightPlan.position_on_circle(center, constants.FORMATION_RADIUS, angle),
         )
 
-    # Deslocamentos em relação ao centro inicial: leste, oeste, norte e sul.
-    external_drones = (
-        ((40, 0, 0), 0),
-        ((-40, 0, 0), 1),
-        ((0, 40, 0), 2),
-        ((0, -40, 0), 3),
-    )
-    for offset, external_index in external_drones:
-        position = tuple(c + d for c, d in zip(center, offset))
-        builder.add_node(CommunicableUAVProtocol.with_external(external_index), position)
+    # E, W, N e S: começa 30 m além do ponto médio do lado da caixa.
+    for external_index in constants.EXTERNAL_DIRECTIONS:
+        builder.add_node(CommunicableUAVProtocol.with_external(external_index),
+                         CommunicableUAVProtocol.station_position(external_index, away=True))
 
     builder.add_handler(TimerHandler())
     builder.add_handler(CommunicationHandler(CommunicationMedium(

@@ -38,8 +38,8 @@ class MovableCoreUAVProtocol (VisibleNodeProtocol):
         self.schedule_movement_timer()
 
     def handle_telemetry(self, telemetry):
+        self.current_position = telemetry.current_position
         if self.simulation_mode == constants.RANDOM:
-            self.current_position = telemetry.current_position
             self.move_random()
 
     def move_random(self):

@@ -39,6 +39,8 @@ class ContactExchangeTest(unittest.TestCase):
             self.external.initialize()
         self.external.current_position = self.external.contact_position(0)
         self.external.steer = Mock()
+        self.external.mode = 'waiting'
+        self.external.target_index = 2
 
     def data(self, message_id='0:1', **fields):
         return dict(type='data', message_id=message_id, source_external_index=0,
@@ -58,7 +60,7 @@ class ContactExchangeTest(unittest.TestCase):
     def test_queue_delivery_ack_and_departure(self):
         self.receive_core(self.data())
         self.core.provider.send_communication_command.assert_not_called()
-        self.external.start_away(0)
+        self.external.start_contact(0)
         self.assertEqual(self.external.mode, 'contact')
         self.receive_core(self.control())
         delivery = self.last_core_packet()
@@ -79,7 +81,7 @@ class ContactExchangeTest(unittest.TestCase):
 
     def test_lost_ack_retries_without_duplicate_delivery(self):
         self.receive_core(self.data())
-        self.external.start_away(0)
+        self.external.start_contact(0)
         self.receive_core(self.control())
         delivery = self.last_core_packet()
         with patch('communicable_uav_protocol.logging.info') as log:
@@ -99,7 +101,7 @@ class ContactExchangeTest(unittest.TestCase):
     def test_external_color_lasts_one_second_even_after_departure(self):
         original_color = self.external.color
         self.receive_core(self.data())
-        self.external.start_away(0)
+        self.external.start_contact(0)
         self.receive_core(self.control())
         self.external.provider.current_time.return_value = 0.25
         self.external.handle_packet(json.dumps(self.last_core_packet()))
@@ -118,14 +120,14 @@ class ContactExchangeTest(unittest.TestCase):
         self.assertEqual(self.external.currentColor, original_color)
 
     def test_empty_queue_completes_contact(self):
-        self.external.start_away(0)
+        self.external.start_contact(0)
         self.receive_core(self.control())
         self.external.handle_packet(json.dumps(self.last_core_packet()))
         self.assertEqual(self.external.mode, 'away')
 
     def test_timeout_keeps_queue_for_next_visit_and_rejects_stale_packets(self):
         self.receive_core(self.data())
-        self.external.start_away(0)
+        self.external.start_contact(0)
         self.receive_core(self.control())
         old_delivery = self.last_core_packet()
         self.external.provider.current_time.return_value = constants.EXTERNAL_CONTACT_RETRY_INTERVAL
@@ -138,8 +140,9 @@ class ContactExchangeTest(unittest.TestCase):
         self.assertIn('0:1', self.core.pending_messages)
         self.external.handle_packet(json.dumps(old_delivery))
         self.assertEqual(self.external.received_messages, {})
-        with patch.object(self.external, 'in_contact', return_value=True):
-            self.external.start_away(3)
+        self.external.mode = 'waiting'
+        self.external.target_index = 2
+        self.external.start_contact(3)
         self.external.handle_packet(json.dumps(old_delivery))
         self.assertEqual(self.external.received_messages, {})
         presence = self.control()
@@ -225,12 +228,11 @@ class ContactExchangeTest(unittest.TestCase):
                 for index in range(constants.DRONE_COUNT):
                     builder.add_node(RecordingCore, FlightPlan.position_on_circle(
                         center, constants.FORMATION_RADIUS, index * 360 / constants.DRONE_COUNT))
-                for index, offset in enumerate(((40, 0, 0), (-40, 0, 0), (0, 40, 0), (0, -40, 0))):
+                for index, offset in enumerate(((63, 0, 0), (-63, 0, 0), (0, 63, 0), (0, -63, 0))):
                     builder.add_node(RecordingExternal.with_external(index),
                                      tuple(c + d for c, d in zip(center, offset)))
                 rng = random.Random(19)
-                with patch('movable_external_uav_protocol.random.uniform', side_effect=rng.uniform), \
-                     patch('logging.info'), patch('simulation_metrics.print'):
+                with patch('logging.info'), patch('simulation_metrics.print'):
                     builder.build().start_simulation()
                 stats = metrics.summary()['total']
                 self.assertEqual(stats['emitted'], sum(node.message_sequence for node in externals))

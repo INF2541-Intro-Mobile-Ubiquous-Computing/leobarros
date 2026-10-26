@@ -11,8 +11,6 @@ RANDOM_DIRECTION_INTERVAL = 1.0  # novo rumo a cada segundo ou ao atingir a bord
 RANDOM_SPEED = 6.0  # m/s em relação ao centro fixo
 RANDOM_MOVEMENT_INTERVAL = 0.01  # deve coincidir com a atualização de mobilidade
 DISCOVERY_RESPONSE_TIMEOUT = 1.0
-DISCOVERY_PROBE_TIMEOUT = 0.25
-DISCOVERY_TIMER = 'discovery'
 
 # Timers
 REPAINT_TIMER = "repaint"
@@ -37,18 +35,18 @@ EXTERNAL_DESTINATIONS = {0: 1, 1: 0, 2: 3, 3: 2}
 MOVEMENT_SPEED = 1.2 * abs(ROTATION_SPEED)
 REAL_TIME = 1.0  # 1: tempo real; 0.5: meia velocidade; 2: dobro da velocidade.
 
-# UAV externo: movimento e contato com a posição prevista de um membro do core.
+# UAV externo: trajeto axial entre o lado da caixa e o ponto de retorno.
 EXTERNAL_TARGET_INDEX = 0
 EXTERNAL_SPEED = 24.0  # m/s
-EXTERNAL_AWAY_DURATION = 5.0  # segundos simulados
+EXTERNAL_AWAY_DISTANCE = 30.0  # metros a partir do ponto de contato
+EXTERNAL_DIRECTIONS = {0: (1, 0, 0), 1: (-1, 0, 0), 2: (0, 1, 0), 3: (0, -1, 0)}
 EXTERNAL_CONTACT_TIMEOUT = 2.0  # tempo máximo da troca antes de se afastar
 EXTERNAL_CONTACT_RETRY_INTERVAL = 0.25  # repete a presença se houver perda
 EXTERNAL_CONTACT_DISTANCE = 5.0  # metros
 # Alcance físico para unicast e broadcast; dados são enviados por unicast.
 RADIO_RANGE = 30.0  # metros
-EXTERNAL_INTERCEPT_STEP = 0.05  # resolução temporal da busca, em segundos
 SAFETY_MARGIN = 2.0  # área de exclusão: raio da formação + margem
-EXTERNAL_CONTACT_OFFSET = 3.0  # ponto de contato radialmente para fora do alvo
+EXTERNAL_CONTACT_OFFSET = 3.0  # distância entre o círculo e cada lado da bounding box
 
 # Cor do nó
 DEFAULT_COLOR = (0, 0, 0)
