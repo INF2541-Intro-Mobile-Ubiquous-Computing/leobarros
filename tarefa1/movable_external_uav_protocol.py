@@ -12,12 +12,6 @@ class MovableExternalUAVProtocol(VisibleNodeProtocol):
     external_index = None
 
     @classmethod
-    def with_target(cls, index):
-        class ConfiguredExternalUAV(cls):
-            target_index = index
-        return ConfiguredExternalUAV
-
-    @classmethod
     def with_external(cls, index):
         class ConfiguredExternalUAV(cls):
             external_index = index
@@ -32,14 +26,9 @@ class MovableExternalUAVProtocol(VisibleNodeProtocol):
         return tuple(c + distance * d for c, d in zip(FlightPlan.get_position(0), direction))
 
     def initialize(self):
-        self.flight_plan = FlightPlan(constants.EXTERNAL_CORE_TARGETS, constants.DRONE_COUNT)
-        if self.external_index is None:
-            target = self.target_index if self.target_index is not None else constants.EXTERNAL_TARGET_INDEX
-            self.external_index = next((i for i, t in constants.EXTERNAL_CORE_TARGETS.items() if t == target), 0)
-        if self.external_index not in constants.EXTERNAL_DIRECTIONS:
-            raise ValueError('Lado da bounding box inválido.')
-        mailbox = self.flight_plan.get_core_target(self.external_index)
-        self.color = constants.PAIR_COLORS.get(mailbox, constants.DEFAULT_COLOR)
+        self.flight_plan = FlightPlan()
+        self.flight_plan.validate_external_index(self.external_index)
+        self.color = constants.EXTERNAL_COLORS.get(self.external_index, constants.DEFAULT_COLOR)
         self.target_index = None
         for value in (constants.EXTERNAL_SPEED, constants.EXTERNAL_AWAY_DISTANCE,
                       constants.EXTERNAL_CONTACT_DISTANCE):

@@ -27,6 +27,7 @@ class SimulationLoggingTest(unittest.TestCase):
                     output = io.StringIO()
                     report = io.StringIO()
                     with patch.object(constants, 'LOG_LEVEL', level), \
+                         patch.object(constants, 'SIMULATION_DURATION', 240), \
                          patch.object(constants, 'SIMULATION_MODE', constants.TOPOLOGY), \
                          patch.object(root, 'handlers', []), \
                          patch('sys.stderr', output), \
@@ -46,9 +47,9 @@ class SimulationLoggingTest(unittest.TestCase):
                         self.assertNotIn('recebida no externo', logs)
                     self.assertNotIn('Finalizing simulation due to error', logs)
                     if level == 'DEBUG':
-                        self.assertIn('encaminhando para', logs)
+                        self.assertIn('armazenada no core', logs)
                     else:
-                        self.assertNotIn('encaminhando para', logs)
+                        self.assertNotIn('armazenada no core', logs)
                         self.assertNotIn('confirmada pelo externo', logs)
         finally:
             root.setLevel(old_level)

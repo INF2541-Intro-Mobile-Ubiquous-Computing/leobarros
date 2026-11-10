@@ -1,5 +1,4 @@
 import json
-import random
 import unittest
 from collections import defaultdict
 from unittest.mock import Mock, patch
@@ -13,8 +12,6 @@ import constants
 from communicable_uav_protocol import CommunicableUAVProtocol
 from flight_plan import FlightPlan
 from message_transmitter_uav_protocol import MessageTransmitterUAVProtocol
-from movable_external_uav_protocol import MovableExternalUAVProtocol
-from visible_node_protocol import VisibleNodeProtocol
 from gradysim.protocol.messages.communication import CommunicationCommandType
 
 
@@ -24,8 +21,8 @@ class MessageRoutingTest(unittest.TestCase):
         mode.start()
         self.addCleanup(mode.stop)
 
-    def plan(self, targets=None, count=9):
-        return FlightPlan(targets if targets is not None else constants.EXTERNAL_CORE_TARGETS, count)
+    def plan(self):
+        return FlightPlan()
 
     def packet(self, **overrides):
         packet = dict(message_id='0:1', source_external_index=0,
@@ -38,50 +35,26 @@ class MessageRoutingTest(unittest.TestCase):
         node.provider = Mock()
         node.provider.get_id.return_value = index
         node.provider.current_time.return_value = 0
-        node.pending_messages = {}
-        node.confirmed_messages = set()
-        node.contacts = {}
-        node.seen_messages = set()
-        node.color = constants.PAIR_COLORS.get(index, constants.DEFAULT_COLOR)
         with patch('visible_node_protocol.VisualizationController'):
-            VisibleNodeProtocol.initialize(node)
+            node.initialize()
         node.flight_plan = plan
         return node
 
-    def test_random_broadcasts_once_and_stops_at_mailbox(self):
-        with patch.object(constants, 'SIMULATION_MODE', constants.RANDOM):
-            for index in (0, 1, 2):
-                node = self.core(index, self.plan())
-                node.handle_packet(self.packet())
-                node.handle_packet(self.packet())
-                if index == 2:
-                    node.provider.send_communication_command.assert_not_called()
-                    self.assertEqual(len(node.pending_messages), 1)
-                else:
+    def test_every_core_stores_and_broadcasts_once_in_both_modes(self):
+        for mode in (constants.TOPOLOGY, constants.RANDOM):
+            for index in range(constants.DRONE_COUNT):
+                with self.subTest(mode=mode, index=index), patch.object(constants, 'SIMULATION_MODE', mode):
+                    node = self.core(index, self.plan())
+                    self.assertEqual(node.currentColor, (0, 0, 0))
+                    node.handle_packet(self.packet())
+                    node.handle_packet(self.packet())
+                    self.assertEqual(node.received_messages, {'0:1': json.loads(self.packet())})
+                    self.assertEqual(node.pending_messages, node.received_messages)
                     node.provider.send_communication_command.assert_called_once()
                     command = node.provider.send_communication_command.call_args.args[0]
                     self.assertEqual(command.command_type, CommunicationCommandType.BROADCAST)
                     self.assertIsNone(command.destination)
-
-    def test_routes_and_stop_at_target(self):
-        for count, route in ((9, [2, 3, 4]), (9, [2, 1, 0, 8]),
-                             (9, [8, 0, 1]), (9, [4]), (8, [0, 1, 2, 3, 4])):
-            with self.subTest(route=route), patch.object(constants, 'DRONE_COUNT', count):
-                plan = self.plan({0: route[0], 1: route[-1]}, count)
-                message = self.packet()
-                for index, current in enumerate(route):
-                    node = self.core(current, plan)
-                    with self.assertLogs(level='DEBUG') as logs:
-                        node.handle_packet(message)
-                    self.assertEqual(node.currentColor,
-                                     constants.PAIR_COLORS.get(route[0], constants.DEFAULT_COLOR))
-                    if index == len(route) - 1:
-                        node.provider.send_communication_command.assert_not_called()
-                        self.assertIn('recebida no core alvo', logs.output[0])
-                    else:
-                        command = node.provider.send_communication_command.call_args.args[0]
-                        self.assertEqual(command.destination, route[index + 1])
-                        self.assertEqual(command.message, message)
+                    self.assertEqual(json.loads(command.message), json.loads(self.packet()))
 
     def test_invalid_packets_are_discarded(self):
         for message in ('o pato', '[]', '{}', 'null', self.packet(destination_external_index=99),
@@ -96,11 +69,12 @@ class MessageRoutingTest(unittest.TestCase):
                 node.provider.send_communication_command.assert_not_called()
                 self.assertIsNone(node.temporary_color)
 
-    def test_color_restores_one_second_after_receipt_including_target(self):
-        for index in (1, 2):
+    def test_color_restores_black_one_second_after_receipt(self):
+        for index in range(constants.DRONE_COUNT):
             with self.subTest(index=index):
-                node = self.core(index, self.plan({0: 0, 1: 2}))
+                node = self.core(index, self.plan())
                 original_color = node.color
+                self.assertEqual(original_color, (0, 0, 0))
                 node.provider.current_time.return_value = 0.25
                 node.handle_packet(self.packet(source_color=[12, 34, 56]))
                 node.visualization.paint_node.assert_called_with(index, (12, 34, 56))
@@ -117,7 +91,7 @@ class MessageRoutingTest(unittest.TestCase):
         node = self.core(1, self.plan())
         node.handle_packet(self.packet(source_color=[1, 2, 3]))
         node.provider.current_time.return_value = 0.5
-        node.handle_packet(self.packet(source_color=[4, 5, 6]))
+        node.handle_packet(self.packet(message_id='0:2', source_color=[4, 5, 6]))
         node.provider.current_time.return_value = 1.0
         node.handle_timer(constants.RESTORE_COLOR_TIMER)
         self.assertEqual(node.currentColor, (4, 5, 6))
@@ -125,31 +99,27 @@ class MessageRoutingTest(unittest.TestCase):
         node.handle_timer(constants.RESTORE_COLOR_TIMER)
         self.assertEqual(node.currentColor, node.color)
 
-    def test_plan_validates_and_copies_mapping(self):
-        targets = {0: 8}
-        plan = self.plan(targets)
-        targets[0] = 2
-        self.assertEqual(plan.get_core_target(0), 8)
-        with self.assertRaises(ValueError):
-            plan.get_core_target(1)
-        for targets in ({0: 9}, {-1: 0}, {0: -1}, {0: '2'}):
-            with self.subTest(targets=targets), self.assertRaises(ValueError):
-                self.plan(targets)
+    def test_plan_validates_satellite_indices(self):
+        plan = self.plan()
+        for index in constants.EXTERNAL_DIRECTIONS:
+            self.assertEqual(plan.validate_external_index(index), index)
+        for index in (True, -1, 99, '0', None):
+            with self.subTest(index=index), self.assertRaises(ValueError):
+                plan.validate_external_index(index)
 
-    def test_external_uses_mapping_and_sends_only_at_contact(self):
+    def test_external_sends_only_to_discovered_core_at_contact(self):
         drone = CommunicableUAVProtocol.with_external(0)()
         drone.provider = Mock()
         drone.provider.get_id.return_value = constants.DRONE_COUNT
         drone.provider.current_time.return_value = 0
-        with patch.object(constants, 'EXTERNAL_CORE_TARGETS', {0: 8, 1: 2}), \
-             patch('movable_external_uav_protocol.VisibleNodeProtocol.initialize'):
+        with patch('movable_external_uav_protocol.VisibleNodeProtocol.initialize'):
             drone.initialize()
         self.assertIsNone(drone.target_index)
         drone.start_contact(0)
         drone.provider.send_communication_command.assert_not_called()
         drone.current_position = drone.contact_point
         drone.mode = 'waiting'
-        drone.target_index = 5  # O nó encontrado é diferente da caixa postal 8.
+        drone.target_index = 5  # Core escolhido pela descoberta.
         drone.start_contact(1)
         drone.start_contact(1.1)
         self.assertEqual(drone.message_sequence, 1)
@@ -169,7 +139,12 @@ class MessageRoutingTest(unittest.TestCase):
             with self.subTest(seed=seed):
                 sent = {}
                 routes = defaultdict(list)
-                delivered = []
+                cores = []
+
+                class RecordingCore(MessageTransmitterUAVProtocol):
+                    def initialize(node):
+                        super().initialize()
+                        cores.append(node)
 
                 class RecordingCommunication(CommunicationHandler):
                     def handle_command(self, command, sender, medium=None):
@@ -179,14 +154,14 @@ class MessageRoutingTest(unittest.TestCase):
                                 sent[packet['message_id']] = packet
                         super().handle_command(command, sender, medium)
 
-                builder = SimulationBuilder(SimulationConfiguration(duration=60, execution_logging=False))
+                builder = SimulationBuilder(SimulationConfiguration(duration=240, execution_logging=False))
                 builder.add_handler(TimerHandler())
                 builder.add_handler(RecordingCommunication(CommunicationMedium(
                     transmission_range=constants.RADIO_RANGE)))
                 builder.add_handler(MobilityHandler())
                 center = (0, 0, 0)
                 for index in range(constants.DRONE_COUNT):
-                    builder.add_node(MessageTransmitterUAVProtocol, FlightPlan.position_on_circle(
+                    builder.add_node(RecordingCore, FlightPlan.position_on_circle(
                         center, constants.FORMATION_RADIUS, index * 360 / constants.DRONE_COUNT))
                 for index, offset in enumerate(((63, 0, 0), (-63, 0, 0), (0, 63, 0), (0, -63, 0))):
                     builder.add_node(CommunicableUAVProtocol.with_external(index),
@@ -199,21 +174,14 @@ class MessageRoutingTest(unittest.TestCase):
                         routes[packet['message_id']].append(node.provider.get_id())
                     original(node, message)
 
-                def observe_log(template, *args):
-                    if 'recebida no core alvo' in template:
-                        delivered.append(args[0])
-
-                rng = random.Random(seed)
-                with patch.object(MessageTransmitterUAVProtocol, 'handle_packet', receive), \
-                     patch('message_transmitter_uav_protocol.logging.debug', side_effect=observe_log):
+                with patch.object(MessageTransmitterUAVProtocol, 'handle_packet', receive):
                     builder.build().start_simulation()
                 self.assertEqual({p['source_external_index'] for p in sent.values()}, {0, 1, 2, 3})
-                self.assertCountEqual(delivered, sent.keys())
-                for message_id, route in routes.items():
-                    packet = sent[message_id]
-                    self.assertEqual(route[-1], constants.EXTERNAL_CORE_TARGETS[packet['destination_external_index']])
-                    for left, right in zip(route, route[1:]):
-                        self.assertIn((right - left) % constants.DRONE_COUNT, (1, constants.DRONE_COUNT - 1))
+                for node in cores:
+                    self.assertEqual(node.received_messages, sent)
+                for route in routes.values():
+                    self.assertEqual(set(route), set(range(constants.DRONE_COUNT)))
+
 
 
 

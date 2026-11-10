@@ -34,7 +34,7 @@ class CommunicableUAVProtocol(MovableExternalUAVProtocol):
             if not math.isfinite(value) or value <= 0:
                 raise ValueError('Os intervalos de contato devem ser positivos e finitos.')
         super().initialize()
-        self.flight_plan.get_core_target(self.destination_external_index)
+        self.flight_plan.validate_external_index(self.destination_external_index)
 
     def wait_for_core(self, now):
         if now < self.next_query_at:
@@ -118,8 +118,9 @@ class CommunicableUAVProtocol(MovableExternalUAVProtocol):
             if isinstance(response, dict) and response.get('type') == 'station_offer':
                 self.accept_offer(response)
                 return
-            if (constants.SIMULATION_MODE == constants.RANDOM and isinstance(response, dict)
-                    and response.get('type', 'data') == 'data'):
+            if isinstance(response, dict) and response.get('type') == 'core_confirmation':
+                return
+            if isinstance(response, dict) and response.get('type', 'data') == 'data':
                 # Ouvir o broadcast do core não substitui a entrega confirmada no encontro.
                 validate_data_packet(response, self.flight_plan)
                 return

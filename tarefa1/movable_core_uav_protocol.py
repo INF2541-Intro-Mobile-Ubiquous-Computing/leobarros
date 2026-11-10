@@ -17,11 +17,9 @@ class MovableCoreUAVProtocol (VisibleNodeProtocol):
         if constants.SIMULATION_MODE not in (constants.TOPOLOGY, constants.RANDOM):
             raise ValueError('SIMULATION_MODE deve ser TOPOLOGY ou RANDOM.')
         self.simulation_mode = constants.SIMULATION_MODE
-        self.color = constants.PAIR_COLORS.get(self.provider.get_id(), constants.DEFAULT_COLOR)
+        self.color = constants.DEFAULT_COLOR
         super().initialize()
-        self.flight_plan = FlightPlan(
-            constants.EXTERNAL_CORE_TARGETS, constants.DRONE_COUNT
-        )
+        self.flight_plan = FlightPlan()
         # Estou contando que main.py adicione os drones em ordem, com IDs de 0 a DRONE_COUNT - 1.
         self.initial_angle = self.provider.get_id() * 360 / constants.DRONE_COUNT
         if self.simulation_mode == constants.RANDOM:

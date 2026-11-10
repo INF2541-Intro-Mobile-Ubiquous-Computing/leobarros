@@ -68,7 +68,7 @@ class RadioDiscoveryTest(unittest.TestCase):
         core.provider.current_time.return_value = 0
         with patch.object(MovableCoreUAVProtocol, 'initialize'):
             core.initialize()
-        core.flight_plan = FlightPlan(constants.EXTERNAL_CORE_TARGETS, constants.DRONE_COUNT)
+        core.flight_plan = FlightPlan()
         core.current_position = (20, 0, 0)  # Dentro do rádio de 30 m, fora do contato de 5 m.
         core.handle_packet(json.dumps(self.request))
         core.provider.send_communication_command.assert_not_called()

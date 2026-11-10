@@ -5,6 +5,7 @@ import unittest
 from collections import Counter
 from unittest.mock import Mock, patch
 
+from gradysim.protocol.messages.communication import CommunicationCommandType
 from gradysim.simulator.handler.communication import CommunicationHandler, CommunicationMedium
 from gradysim.simulator.handler.mobility import MobilityHandler
 from gradysim.simulator.handler.timer import TimerHandler
@@ -24,12 +25,15 @@ class ContactExchangeTest(unittest.TestCase):
         mode = patch.object(constants, 'SIMULATION_MODE', constants.TOPOLOGY)
         mode.start()
         self.addCleanup(mode.stop)
+        self.setup_protocols()
+
+    def setup_protocols(self):
         self.core = MessageTransmitterUAVProtocol()
         self.core.provider = Mock()
         self.core.provider.get_id.return_value = 2
         with patch.object(MovableCoreUAVProtocol, 'initialize'):
             self.core.initialize()
-        self.core.flight_plan = FlightPlan(constants.EXTERNAL_CORE_TARGETS, constants.DRONE_COUNT)
+        self.core.flight_plan = FlightPlan()
         self.core.show_message_color = Mock()
         self.external = CommunicableUAVProtocol.with_external(1)()
         self.external.provider = Mock()
@@ -59,7 +63,8 @@ class ContactExchangeTest(unittest.TestCase):
 
     def test_queue_delivery_ack_and_departure(self):
         self.receive_core(self.data())
-        self.core.provider.send_communication_command.assert_not_called()
+        self.assertEqual(self.core.provider.send_communication_command.call_args.args[0].command_type,
+                         CommunicationCommandType.BROADCAST)
         self.external.start_contact(0)
         self.assertEqual(self.external.mode, 'contact')
         self.receive_core(self.control())
@@ -78,6 +83,43 @@ class ContactExchangeTest(unittest.TestCase):
         self.assertEqual(self.external.mode, 'away')
         self.receive_core(self.data())
         self.assertEqual(self.core.pending_messages, {})
+
+    def test_any_core_delivers_locally_and_keeps_unique_history_after_ack(self):
+        for mode in (constants.TOPOLOGY, constants.RANDOM):
+            for index in range(constants.DRONE_COUNT):
+                with self.subTest(mode=mode, index=index), patch.object(constants, 'SIMULATION_MODE', mode):
+                    self.setup_protocols()
+                    self.core.provider.get_id.return_value = index
+                    self.external.target_index = index
+                    self.receive_core(self.data())
+                    self.external.start_contact(0)
+                    self.core.provider.send_communication_command.reset_mock()
+                    self.receive_core(self.control(relay_core=index))
+                    self.core.provider.send_communication_command.assert_called_once()
+                    self.external.handle_packet(json.dumps(self.last_core_packet()))
+                    ack = json.loads(self.external.provider.send_communication_command.call_args.args[0].message)
+                    self.receive_core(ack)
+                    self.assertEqual(self.core.pending_messages, {})
+                    self.assertEqual(self.core.received_messages, {'0:1': self.data()})
+                    self.receive_core(self.data())
+                    self.assertEqual(len(self.core.received_messages), 1)
+                    self.assertEqual(self.core.pending_messages, {})
+
+    def test_confirmation_flood_is_unique_and_handles_reordered_data(self):
+        confirmation = dict(type='core_confirmation', message_id='0:1', external_index=1)
+        for data_first in (True, False):
+            with self.subTest(data_first=data_first):
+                self.setup_protocols()
+                if data_first:
+                    self.receive_core(self.data())
+                self.core.provider.send_communication_command.reset_mock()
+                self.receive_core(confirmation)
+                self.receive_core(confirmation)
+                self.core.provider.send_communication_command.assert_called_once()
+                self.assertEqual(self.core.pending_messages, {})
+                self.receive_core(self.data())
+                self.assertEqual(self.core.received_messages, {'0:1': self.data()})
+                self.assertEqual(self.core.pending_messages, {})
 
     def test_lost_ack_retries_without_duplicate_delivery(self):
         self.receive_core(self.data())
@@ -173,7 +215,8 @@ class ContactExchangeTest(unittest.TestCase):
         self.receive_core(self.control())
         self.core.provider.send_communication_command.reset_mock()
         self.receive_core(self.control('ack', message_id='0:1'))
-        self.core.provider.send_communication_command.assert_not_called()
+        self.assertEqual(json.loads(self.core.provider.send_communication_command.call_args.args[0].message)['type'],
+                         'core_confirmation')
         self.assertEqual(set(self.core.pending_messages), {'0:2'})
         self.receive_core(self.control('ack', message_id='0:2'))
         self.assertEqual(self.last_core_packet()['type'], 'contact_complete')
@@ -218,7 +261,8 @@ class ContactExchangeTest(unittest.TestCase):
                             return
                         super().handle_command(command, sender, medium)
 
-                builder = SimulationBuilder(SimulationConfiguration(duration=60, execution_logging=False))
+                # Inclui uma nova visita após a emissão dos pares, mesmo na rotação lenta.
+                builder = SimulationBuilder(SimulationConfiguration(duration=480, execution_logging=False))
                 metrics = SimulationMetrics()
                 builder.add_handler(MetricsHandler(metrics))
                 builder.add_handler(TimerHandler())
@@ -237,7 +281,7 @@ class ContactExchangeTest(unittest.TestCase):
                 stats = metrics.summary()['total']
                 self.assertEqual(stats['emitted'], sum(node.message_sequence for node in externals))
                 self.assertEqual(stats['received'], sum(len(node.received_messages) for node in externals))
-                self.assertEqual(stats['confirmed'], sum(len(node.confirmed_messages) for node in cores))
+                self.assertEqual(stats['confirmed'], len(set().union(*(node.confirmed_messages for node in cores))))
                 self.assertEqual(stats['not_delivered'], stats['emitted'] - stats['received'])
                 self.assertEqual(stats['received_unconfirmed'], stats['received'] - stats['confirmed'])
                 if drop_kind == 'all_responses':

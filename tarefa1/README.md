@@ -63,39 +63,40 @@ python main.py
 
 ### Comunicação pelo core
 
-`EXTERNAL_CORE_TARGETS = {0: 0, 1: 2, 2: 4, 3: 6}` associa cada externo ao
-seu nó de armazenamento (caixa postal), consultado por `FlightPlan.get_core_target`.
-Essa associação não restringe qual nó pode atender o externo no ponto de contato. `EXTERNAL_DESTINATIONS` define os pares
+`EXTERNAL_DIRECTIONS` identifica os satélites válidos e seus lados de aproximação.
+`EXTERNAL_COLORS` define a cor de cada satélite, sem associação com um core.
+Todos os cores têm cor padrão preta (`DEFAULT_COLOR`) e assumem temporariamente
+a cor do remetente por um segundo simulado ao receber uma mensagem nova.
+Qualquer core pode atender qualquer externo. `EXTERNAL_DESTINATIONS` define os pares
 fixos `0 ↔ 1` e `2 ↔ 3`.
 
 Ao confirmar o encontro com um nó do Core, o externo envia um JSON com `message_id` (índice externo
 e sequência local), `source_external_index`, `source_color`, `destination_external_index` e
 `payload`. Cada encontro gera uma nova mensagem antes do afastamento.
 
-Os nove membros do core usam `MessageTransmitterUAVProtocol`. Em TOPOLOGY, cada receptor
-consulta no plano o alvo do destinatário externo e encaminha apenas ao vizinho
-que reduz o número de saltos no anel. Exemplos: `2 → 3 → 4` e `2 → 1 → 0 → 8`.
-Em empate, prefere índices crescentes. Cada receptor, incluindo o core alvo,
-assume a cor do emissor por um segundo e depois restaura sua cor original.
-O core alvo registra a chegada e guarda a mensagem em `pending_messages`. Mensagens
-inválidas e índices externos desconhecidos são descartados com log de aviso.
+Os nove membros do core usam `MessageTransmitterUAVProtocol`. Tanto em `TOPOLOGY`
+quanto em `RANDOM`, cada core armazena a primeira cópia de uma mensagem em
+`received_messages`, com remetente, destinatário e conteúdo, e a retransmite
+imediatamente por broadcast. Duplicatas por `message_id` não são armazenadas
+nem retransmitidas, evitando ciclos. Cada primeira recepção destaca o core com
+a cor do emissor por um segundo e registra a chegada para as métricas.
+Mensagens inválidas e índices externos desconhecidos são descartados.
 
-No modo RANDOM, permanece a disseminação dos dados em broadcast pelo Core,
-com supressão de duplicatas por `message_id` e armazenamento na caixa postal.
-
-Quando o nó encontrado é diferente da caixa postal, ele encaminha `presence` e
-`ack` até ela em envelopes `contact_relay`. As respostas voltam pelo nó de
-contato e seguem por unicast ao externo. Em TOPOLOGY, esses envelopes percorrem
-o anel; em RANDOM, são enviados diretamente ao nó de destino e dependem de ele
-estar a até 30 m. Os envelopes têm limite de saltos e prazo de validade. Filas
-não confirmadas permanecem na caixa postal, mesmo que o próximo encontro seja
-com outro nó. Nenhum compartilhamento global de filas é usado.
+A lista única é replicada entre os cores pelas transmissões de rádio: cada nó
+mantém seu próprio histórico, sem acesso direto à memória dos outros drones.
+`pending_messages` contém apenas mensagens ainda não confirmadas. O histórico
+`received_messages` permanece mesmo após a entrega. O broadcast se propaga por
+múltiplos saltos, respeitando o alcance físico; alcançar todo o core exige
+conectividade durante a propagação.
 
 Ao entrar em contato, o externo envia `presence`, com seu índice, ID real do
-simulador e uma sessão nova a cada encontro. O core responde com `delivery`
+simulador e uma sessão nova a cada encontro. O core conectado responde imediatamente com `delivery`
 para cada mensagem pendente desse destinatário. O externo registra as mensagens
 em `received_messages` e responde com `ack`; só então o core remove cada mensagem
-da fila. Quando a fila desse externo fica vazia, o core envia `contact_complete`,
+da fila. Esse core também propaga `core_confirmation` por broadcast, uma vez
+por mensagem em cada core, para remover as cópias pendentes nos demais nós.
+Não há consulta nem encaminhamento a uma caixa postal remota.
+Quando a fila desse externo fica vazia, o core envia `contact_complete`,
 liberando o afastamento. Uma fila vazia desde o início também encerra a troca.
 
 Enquanto aguarda, o externo repete a presença a cada 0,25 s se estiver em contato.
@@ -110,11 +111,12 @@ depois, a cor normal é restaurada. Um novo recebimento reinicia esse intervalo.
 
 `RADIO_RANGE = 30.0` fixa o alcance físico em 30 m para unicast e broadcast,
 independentemente do raio da formação. O contato dos externos continua em 5 m.
-No anel, o envio é unicast ao vizinho escolhido, mesmo se outros nós estiverem no alcance.
+Cada core retransmite por broadcast para os nós em seu alcance, nos dois modos.
 A entrega depende de o receptor estar no alcance no instante do envio.
 A fila e as confirmações cobrem a entrega
-do core ao externo. O envio inicial do externo e os saltos pelo anel ainda não
-têm retransmissão automática em caso de perda de rádio. As filas e o histórico
+do core ao externo. O envio inicial do externo e os broadcasts de dados e
+confirmações não têm retransmissão automática em caso de perda de rádio ou
+partição da rede. As filas e o histórico
 de mensagens recebidas/confirmadas ficam em memória durante a simulação.
 Os logs identificam o envio, cada salto, a chegada ao core, a entrega ao externo
 e sua confirmação.
@@ -132,7 +134,7 @@ exclusivo de cada simulação, e imprime o relatório final independentemente do
 O relatório mostra totais globais e por par origem–destino: mensagens únicas
 emitidas, recebidas, confirmadas e não entregues; recebidas sem confirmação;
 taxa de entrega; latência média, mediana e máxima; e espera média no core.
-Latência é emissão até primeira entrega; espera no core é chegada ao core alvo
+Latência é emissão até primeira entrega; espera no core é chegada ao primeiro core
 até primeira entrega. Só mensagens recebidas entram nessas médias; sem amostras,
 o relatório mostra `n/d`.
 

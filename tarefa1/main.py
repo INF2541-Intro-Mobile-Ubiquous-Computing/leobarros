@@ -19,9 +19,7 @@ def main():
         raise ValueError('SIMULATION_MODE deve ser TOPOLOGY ou RANDOM.')
     logger = logging.getLogger()
     logger.setLevel(constants.LOG_LEVEL)
-    flight_plan = FlightPlan(
-        constants.EXTERNAL_CORE_TARGETS, constants.DRONE_COUNT
-    )
+    flight_plan = FlightPlan()
     config = SimulationConfiguration(
         # O handler abaixo controla o ritmo, evitando as esperas relativas do simulador.
         duration=constants.SIMULATION_DURATION, real_time=False,
