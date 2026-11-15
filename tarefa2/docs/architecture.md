@@ -1,5 +1,7 @@
 # Arquitetura atual da simulação
 
+Os contratos de dados adicionados posteriormente em `src/pubsub/models.py` estão descritos em [Modelos e envelopes Pub/Sub](pubsub-models.md). Eles ainda não estão conectados aos protocolos descritos abaixo.
+
 Este documento descreve a base copiada para `tarefa2`, inspecionada em 15/11/2026. O SwCore implementado transporta lotes de dados entre satélites por meio do core. Não há ainda tópicos, assinaturas, filtros, PSPeers ou entrega de aplicação destinada a UAVs do core. As possibilidades de extensão abaixo são orientações para etapas futuras, não funcionalidades implementadas.
 
 Atualização da etapa de configuração: `main.py` agora expõe `parse_args(argv)` e aceita `--pubsub`, que força `star` e `swcore`, mesmo diante de valores conflitantes na CLI. `PUBSUB_ENABLED` em `config.py` define a ativação padrão; o argumento resolvido `args.pubsub` representa a ativação desta execução, sem alterar o módulo de configuração. Os demais parâmetros novos (`PUBSUB_TOPICS`, `PSPEER_SLOTS`, `PUBSUB_SEED`, `PUBSUB_PUBLICATION_INTERVAL`, `PUBSUB_SUBSCRIPTION_INTERVAL`) estão no mesmo arquivo e permanecem reservados à implementação futura. Os slots `(0, 3, 6)` são índices de rims. Nenhum gerador de eventos ou PSPeer foi criado. Sem ativação Pub/Sub, os padrões originais descritos abaixo continuam válidos.
