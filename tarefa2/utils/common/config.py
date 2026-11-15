@@ -6,6 +6,10 @@ All derived values are computed here; nothing is hard-coded in protocol files.
 import logging
 import math
 
+# DEBUG enables detailed simulation logs; INFO keeps execution start/end messages.
+# Also accepts WARNING, ERROR and CRITICAL.
+LOG_LEVEL = "INFO"
+
 from utils.common.sensor_positions import (
     ForbiddenZone,
 )
@@ -133,12 +137,12 @@ _TANGENTIAL_SPEED = 2 * math.pi * CORE_RADIUS * (ROT_RATE_DEG / 360)    # m/s
 _ALIGN_PERIOD = 45.0 / ROT_RATE_DEG                                       # seconds between alignments
 
 def _log_derived() -> None:
-    logging.info("=== Core topology derived values ===")
-    logging.info(f"  CORE_RADIUS         = {CORE_RADIUS:.4f} m  (< COMM_RANGE={COMM_RANGE})")
-    logging.info(f"  Rim adj. chord      = {_RIM_CHORD_ADJ:.4f} m  (< COMM_RANGE={COMM_RANGE})")
-    logging.info(f"  Tangential speed    = {_TANGENTIAL_SPEED:.4f} m/s")
-    logging.info(f"  Alignment period    = {_ALIGN_PERIOD:.2f} s  (45°/{ROT_RATE_DEG}°/s)")
-    logging.info(f"  DOCK_RADIUS         = {DOCK_RADIUS:.4f} m")
+    logging.debug("=== Core topology derived values ===")
+    logging.debug(f"  CORE_RADIUS         = {CORE_RADIUS:.4f} m  (< COMM_RANGE={COMM_RANGE})")
+    logging.debug(f"  Rim adj. chord      = {_RIM_CHORD_ADJ:.4f} m  (< COMM_RANGE={COMM_RANGE})")
+    logging.debug(f"  Tangential speed    = {_TANGENTIAL_SPEED:.4f} m/s")
+    logging.debug(f"  Alignment period    = {_ALIGN_PERIOD:.2f} s  (45°/{ROT_RATE_DEG}°/s)")
+    logging.debug(f"  DOCK_RADIUS         = {DOCK_RADIUS:.4f} m")
 
 # ---------------------------------------------------------------------------
 # Startup assertions
@@ -292,7 +296,7 @@ def generate_cross_sensor_positions(force_regen: bool = False):
         row += 1
 
     cache_save("cross_sensor_positions", params, {k: list(v) for k, v in placed.items()})
-    logging.info(f"Cross sensor positions generated: {len(placed)} sensors")
+    logging.debug(f"Cross sensor positions generated: {len(placed)} sensors")
     return placed
 
 

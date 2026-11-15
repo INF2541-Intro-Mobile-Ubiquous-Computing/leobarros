@@ -152,7 +152,7 @@ class CoreDockMixin:
             entry["hops"] = 1
             self._core_buffer[msg_id] = entry
 
-            logging.info(
+            logging.debug(
                 f"[CORE {self.provider.get_id()}] received dock_data from {origin_face} sat "
                 f"(msg_id={msg_id}, dest={dest_face}, {len(payload)} sensors)"
             )
@@ -236,7 +236,7 @@ class CoreDockMixin:
             self.provider.send_communication_command(
                 SendMessageCommand(deliver_payload, sat_id)
             )
-            logging.info(
+            logging.debug(
                 f"[CORE {self.provider.get_id()}] delivered msg {msg_id} to {face} sat {sat_id} "
                 f"(hops={hops})"
             )

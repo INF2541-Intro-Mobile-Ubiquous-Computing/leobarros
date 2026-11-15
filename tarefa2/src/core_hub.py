@@ -119,7 +119,7 @@ class CoreHubProtocol(IProtocol):
             )
 
         elif timer == "hub_sample":
-            logging.info(
+            logging.debug(
                 f"[HUB {self.provider.get_id()}] orientation={HUB_SPIN_STATE.current_angle:.1f}° "
                 f"buffer_size={len(self._core_buffer)}"
             )
@@ -163,7 +163,7 @@ class CoreHubProtocol(IProtocol):
 
     def finish(self) -> None:
         from utils.metrics.stats import print_summary
-        logging.info(
+        logging.debug(
             f"[HUB {self.provider.get_id()}] finish | buffer={len(self._core_buffer)} messages"
         )
         print_summary()

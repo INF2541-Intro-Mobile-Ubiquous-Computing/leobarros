@@ -153,13 +153,13 @@ def make_satellite_protocol(face_name: str, swcore: bool = False) -> type:
             self._ack_node = None
             self._wait_start_time = self.provider.current_time()
             set_docked_sat(_face, self.provider.get_id())
-            logging.info(f"[SAT-{_face}] → WAIT_ALIGN (buffer={len(self.packets)} sensors)")
+            logging.debug(f"[SAT-{_face}] → WAIT_ALIGN (buffer={len(self.packets)} sensors)")
             self.provider.schedule_timer("sat_hello", self.provider.current_time())
 
         def _start_exchange(self, ack_node_id: int) -> None:
             self._state = ST_EXCHANGE
             self._ack_node = ack_node_id
-            logging.info(f"[SAT-{_face}] → EXCHANGE with rim/hub {ack_node_id}")
+            logging.debug(f"[SAT-{_face}] → EXCHANGE with rim/hub {ack_node_id}")
 
             # Compute wait time metric
             wait_time = 0.0
@@ -193,7 +193,7 @@ def make_satellite_protocol(face_name: str, swcore: bool = False) -> type:
             from utils.metrics.stats import record_dock
             record_dock(_face, wait_time, cycle_time)
 
-            logging.info(
+            logging.debug(
                 f"[SAT-{_face}] departing | dock#{self._dock_count} "
                 f"wait={wait_time:.2f}s cycle={cycle_time:.2f}s"
             )
@@ -257,7 +257,7 @@ def make_satellite_protocol(face_name: str, swcore: bool = False) -> type:
             self.provider.send_communication_command(
                 SendMessageCommand(payload, target_id)
             )
-            logging.info(
+            logging.debug(
                 f"[SAT-{_face}] uploaded dock_data → node {target_id} "
                 f"(msg_id={entry['id']}, {len(entry['payload'])} sensors, dest={entry['dest_face']})"
             )
@@ -291,7 +291,7 @@ def make_satellite_protocol(face_name: str, swcore: bool = False) -> type:
 
             elif timer == "sat_exchange_timeout":
                 if self._state == ST_EXCHANGE:
-                    logging.warning(f"[SAT-{_face}] exchange timeout — departing anyway")
+                    logging.debug(f"[SAT-{_face}] exchange timeout — departing anyway")
                     self._depart()
 
         # ── Telemetry ──────────────────────────────────────────────────
@@ -358,7 +358,7 @@ def make_satellite_protocol(face_name: str, swcore: bool = False) -> type:
                     hops = raw.get("hops", 0)
                     from utils.metrics.stats import record_delivery
                     record_delivery(msg_id, self.provider.current_time(), hops)
-                    logging.info(
+                    logging.debug(
                         f"[SAT-{_face}] received dock_deliver: msg_id={msg_id} hops={hops}"
                     )
                 # Depart after receiving delivery
@@ -371,7 +371,7 @@ def make_satellite_protocol(face_name: str, swcore: bool = False) -> type:
         # ── finish ─────────────────────────────────────────────────────
 
         def finish(self) -> None:
-            logging.info(
+            logging.debug(
                 f"[SAT-{_face}] finish | docks={self._dock_count} "
                 f"delivered_ids={len(self._delivered_ids)}"
             )

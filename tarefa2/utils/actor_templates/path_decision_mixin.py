@@ -182,7 +182,7 @@ class PathDecisionMixin:
         self.provider.send_communication_command(
             BroadcastMessageCommand(json.dumps(msg))
         )
-        logging.info(
+        logging.debug(
             f"UAV {self.provider.get_id()} delivering {total} packets "
             f"to base | breakdown: {self.packets}"
         )

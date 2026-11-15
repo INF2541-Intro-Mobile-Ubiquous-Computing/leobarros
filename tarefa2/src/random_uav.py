@@ -107,7 +107,7 @@ class RandomUAVProtocol(IProtocol):
 
     def finish(self) -> None:
         global _SUMMARY_PRINTED
-        logging.info(
+        logging.debug(
             f"[RANDOM {self.provider.get_id()}] finish | buffer={len(self._core_buffer)}"
         )
         if not _SUMMARY_PRINTED:

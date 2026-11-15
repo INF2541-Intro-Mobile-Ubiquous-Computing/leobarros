@@ -80,7 +80,7 @@ class SensorProtocol(IProtocol):
         if self.packet_count > 0:
             age = self._lamport.time - self._batch_start_lamport
             if age >= PACKET_TTL_TICKS:
-                logging.info(
+                logging.debug(
                     f"Sensor {self._sensor_name}: TTL expired — "
                     f"discarding {self.packet_count} packets "
                     f"(age={age} ticks, TTL={PACKET_TTL_TICKS})"
@@ -121,7 +121,7 @@ class SensorProtocol(IProtocol):
             self.provider.send_communication_command(
                 SendMessageCommand(json.dumps(response), msg["sender_id"])
             )
-            logging.info(
+            logging.debug(
                 f"Sensor {self._sensor_name}: delivered {self.packet_count} packets "
                 f"to UAV {msg['sender_id']} "
                 f"(produced={self.total_produced}, expired={self.total_expired})"
@@ -140,7 +140,7 @@ class SensorProtocol(IProtocol):
             "expired":     self.total_expired,
             "undelivered": undelivered,
         }
-        logging.info(
+        logging.debug(
             f"Sensor {self.provider.get_id()} ({self._sensor_name}) shutdown | "
             f"produced={self.total_produced} | "
             f"expired={self.total_expired} | "

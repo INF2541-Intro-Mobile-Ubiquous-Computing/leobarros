@@ -102,7 +102,7 @@ class SWCoreMixin:
 
     def _on_connect(self, sat: int, face: str) -> None:
         self._rt[sat] = {"state": DIRECT, "next_hop": None, "ver": self._new_ver()}
-        logging.info(f"[SWCORE {self.provider.get_id()}] connect({sat}) RT[{sat}]=direct")
+        logging.debug(f"[SWCORE {self.provider.get_id()}] connect({sat}) RT[{sat}]=direct")
         self._send_rt_update(sat, "reachable", self._rt[sat]["ver"])
         pending = self._buffered_for(sat)
         if pending:
@@ -110,7 +110,7 @@ class SWCoreMixin:
 
     def _on_disconnect(self, sat: int) -> None:
         self._rt[sat] = {"state": UNREACHABLE, "next_hop": None, "ver": self._new_ver()}
-        logging.info(f"[SWCORE {self.provider.get_id()}] disconnect({sat}) RT[{sat}]=unreachable")
+        logging.debug(f"[SWCORE {self.provider.get_id()}] disconnect({sat}) RT[{sat}]=unreachable")
         self._send_rt_update(sat, "unreachable", self._rt[sat]["ver"])
 
     def _on_rt_update(self, raw: dict) -> None:
@@ -123,7 +123,7 @@ class SWCoreMixin:
             self._rt[sat] = {"state": HOP, "next_hop": sender, "ver": ver}
         else:
             self._rt[sat] = {"state": UNREACHABLE, "next_hop": None, "ver": ver}
-        logging.info(
+        logging.debug(
             f"[SWCORE {self.provider.get_id()}] RT[{sat}]={state} via {sender}"
         )
         self._send_rt_update(sat, state, ver, exclude=sender)

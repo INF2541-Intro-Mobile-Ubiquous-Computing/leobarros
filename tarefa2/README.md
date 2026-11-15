@@ -114,6 +114,28 @@ The original mobility and sensor seeds remain unchanged. Setting
 
 ## Environment setup
 
+### Logging
+
+Set `LOG_LEVEL` in `utils/common/config.py` before starting a run:
+
+```python
+LOG_LEVEL = "INFO"  # default; keeps execution start/end messages
+# LOG_LEVEL = "DEBUG"  # shows existing simulation logs
+```
+
+`WARNING`, `ERROR` and `CRITICAL` are also supported. Detailed application
+logs now use `DEBUG`, including initialization, docking, satellites, sensors,
+metrics and the previous timeout/alignment warnings. GrADyS-SIM informational
+status messages are also displayed only at `DEBUG` through a local handler
+filter; execution start/end, elapsed time and `Simulation complete` remain at
+`INFO`. The dependency is unchanged and its runtime warnings/errors remain
+visible. The threshold and filter are reapplied after simulator construction.
+After construction, only the newest GrADyS-SIM console handler is retained,
+avoiding duplicate output from Python's default console handler. File handlers
+and custom handler subclasses are preserved.
+Future application messages explicitly logged at `INFO` will remain visible
+at `LOG_LEVEL = "INFO"`.
+
 ```bash
 python -m venv venv
 # Windows

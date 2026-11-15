@@ -192,7 +192,7 @@ def make_uav_protocol(
                 self._schedule_heartbeat()
 
             elif timer == "depart":
-                logging.info(f"UAV {self.provider.get_id()} departing (slot {self._cluster_index})")
+                logging.debug(f"UAV {self.provider.get_id()} departing (slot {self._cluster_index})")
                 self._start_patrol()
 
         # ── Incoming packets ───────────────────────────────────────────
@@ -215,7 +215,7 @@ def make_uav_protocol(
                 if incoming:
                     for sensor, count in incoming.items():
                         self.packets[sensor] = self.packets.get(sensor, 0) + count
-                    logging.info(
+                    logging.debug(
                         f"UAV {self.provider.get_id()} (slot {self._cluster_index}) "
                         f"collected {incoming} from sensor {raw.get('sender_id')} "
                         f"| buffer: {self.packets}"
@@ -259,7 +259,7 @@ def make_uav_protocol(
         # ── Finish ─────────────────────────────────────────────────────
 
         def finish(self) -> None:
-            logging.info(
+            logging.debug(
                 f"UAV {self.provider.get_id()} (slot {self._cluster_index}) finished "
                 f"| buffer={self.packets}"
             )

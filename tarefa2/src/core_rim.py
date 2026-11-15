@@ -141,7 +141,7 @@ def make_core_rim_protocol(k: int) -> type:
                     (pos[0] - lp[0]) ** 2 + (pos[1] - lp[1]) ** 2 + (pos[2] - lp[2]) ** 2
                 )
                 if dist > COMM_RANGE:
-                    logging.warning(
+                    logging.debug(
                         f"[RIM{_k} {self.provider.get_id()}] hub distance {dist:.2f} > COMM_RANGE!"
                     )
 
@@ -205,7 +205,7 @@ def make_core_rim_protocol(k: int) -> type:
                         curr_angle = math.atan2(pos[1] - lp[1], pos[0] - lp[0])
                         da = math.degrees(curr_angle - prev_angle)
                         rate = abs(da) / dt
-                        logging.info(
+                        logging.debug(
                             f"[RIM0 sample] t={t:.1f} r={r:.2f}m "
                             f"err={angle_err:.2f}m rate≈{rate:.2f}°/s"
                         )
@@ -216,7 +216,7 @@ def make_core_rim_protocol(k: int) -> type:
         # ── finish ─────────────────────────────────────────────────────
 
         def finish(self) -> None:
-            logging.info(
+            logging.debug(
                 f"[RIM{_k} {self.provider.get_id()}] finish | buffer={len(self._core_buffer)}"
             )
             super().finish()

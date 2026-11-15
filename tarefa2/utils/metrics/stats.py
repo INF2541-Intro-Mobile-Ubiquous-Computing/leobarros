@@ -116,26 +116,26 @@ def _safe_max(lst):
 def print_summary() -> None:
     """Print the end-of-simulation metrics table."""
     if not _MESSAGES:
-        logging.info("[Metrics] No messages recorded.")
+        logging.debug("[Metrics] No messages recorded.")
         return
 
     delivered = [r for r in _MESSAGES.values() if r.delivered_at is not None]
     total = len(_MESSAGES)
     n_del = len(delivered)
 
-    logging.info("=" * 60)
-    logging.info("[Metrics] END-OF-SIMULATION SUMMARY")
-    logging.info(f"  Total messages uploaded : {total}")
-    logging.info(f"  Delivered               : {n_del}  ({100*n_del/max(total,1):.1f}%)")
+    logging.debug("=" * 60)
+    logging.debug("[Metrics] END-OF-SIMULATION SUMMARY")
+    logging.debug(f"  Total messages uploaded : {total}")
+    logging.debug(f"  Delivered               : {n_del}  ({100*n_del/max(total,1):.1f}%)")
 
     if delivered:
         latencies = [r.delivered_at - r.created_at for r in delivered]
         hop_counts = [r.hops for r in delivered]
-        logging.info(f"  Latency  mean/median/max: "
+        logging.debug(f"  Latency  mean/median/max: "
                      f"{_safe_mean(latencies):.2f} / "
                      f"{_safe_median(latencies):.2f} / "
                      f"{_safe_max(latencies):.2f} s")
-        logging.info(f"  Hops     mean/median/max: "
+        logging.debug(f"  Hops     mean/median/max: "
                      f"{_safe_mean(hop_counts):.1f} / "
                      f"{_safe_median(hop_counts):.1f} / "
                      f"{_safe_max(hop_counts):.0f}")
@@ -146,18 +146,18 @@ def print_summary() -> None:
         key = (r.origin_face, r.dest_face)
         pairs.setdefault(key, []).append(r)
 
-    logging.info("  --- Per route-pair ---")
+    logging.debug("  --- Per route-pair ---")
     for (orig, dest), recs in sorted(pairs.items()):
         dels = [r for r in recs if r.delivered_at is not None]
         ratio = len(dels) / len(recs) if recs else 0
-        logging.info(f"    {orig}->{dest}: {len(dels)}/{len(recs)} delivered ({100*ratio:.0f}%)")
+        logging.debug(f"    {orig}->{dest}: {len(dels)}/{len(recs)} delivered ({100*ratio:.0f}%)")
 
     # Per-satellite
-    logging.info("  --- Per-satellite dock stats ---")
+    logging.debug("  --- Per-satellite dock stats ---")
     for face, s in sorted(_SATELLITES.items()):
-        logging.info(
+        logging.debug(
             f"    Sat {face}: docks={s.dock_count}  "
             f"wait_mean={_safe_mean(s.wait_times):.2f}s  "
             f"cycle_mean={_safe_mean(s.cycle_times):.2f}s"
         )
-    logging.info("=" * 60)
+    logging.debug("=" * 60)

@@ -39,6 +39,7 @@ from utils.common.config import (
     NUM_RANDOM_UAVS,
     RANDOM_SEED,
     PUBSUB_ENABLED,
+    LOG_LEVEL,
     random_uav_starts,
     SAT_OUTER_DIST,
     SENSOR_FIELD_X,
@@ -48,6 +49,7 @@ from utils.common.config import (
 )
 
 from src.sensor import Sensor
+from utils.common.logging_config import configure_logging
 from src.uav import make_core_hub, make_core_rim, make_random_uav, make_satellite
 
 
@@ -99,6 +101,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    configure_logging(LOG_LEVEL)
     random.seed(RANDOM_SEED)
 
     # ── Simulation config ──────────────────────────────────────────────────
@@ -106,17 +109,17 @@ def main() -> None:
     builder = SimulationBuilder(config)
 
     _log_derived()
-    logging.info(f"Obstacle center:   {OBSTACLE_CENTER}")
-    logging.info(f"Sensors placed:    {len(SENSOR_POSITIONS)}")
+    logging.debug(f"Obstacle center:   {OBSTACLE_CENTER}")
+    logging.debug(f"Sensors placed:    {len(SENSOR_POSITIONS)}")
     if args.topology == "star":
-        logging.info(f"UAVs:              {NUM_UAVS}  (1 hub + {CORE_RIM_NODES} rim + 4 satellites)")
+        logging.debug(f"UAVs:              {NUM_UAVS}  (1 hub + {CORE_RIM_NODES} rim + 4 satellites)")
     else:
-        logging.info(f"UAVs:              {NUM_RANDOM_UAVS + len(FACE_NAMES)}  "
+        logging.debug(f"UAVs:              {NUM_RANDOM_UAVS + len(FACE_NAMES)}  "
                      f"({NUM_RANDOM_UAVS} random + {len(FACE_NAMES)} satellites)")
-    logging.info(f"Topology:          {args.topology}")
-    logging.info(f"Routing strategy:  {args.routing_strategy}")
+    logging.debug(f"Topology:          {args.topology}")
+    logging.debug(f"Routing strategy:  {args.routing_strategy}")
     if args.pubsub:
-        logging.info("Pub/Sub configuration enabled: star + swcore; event generation not implemented yet.")
+        logging.debug("Pub/Sub configuration enabled: star + swcore; event generation not implemented yet.")
 
     viz = not args.no_viz
 
@@ -127,19 +130,19 @@ def main() -> None:
     if args.topology == "star":
         # ── Core hub ───────────────────────────────────────────────────────
         HubClass = make_core_hub(routing=args.routing_strategy, viz=viz)
-        logging.info(f"Hub start: {CORE_HUB_START}")
+        logging.debug(f"Hub start: {CORE_HUB_START}")
         builder.add_node(HubClass, CORE_HUB_START)
 
         # ── Core rim nodes 0..7 ────────────────────────────────────────────
         for k in range(CORE_RIM_NODES):
             RimClass = make_core_rim(k=k, routing=args.routing_strategy, viz=viz)
-            logging.info(f"Rim{k} start: {CORE_RIM_STARTS[k]}")
+            logging.debug(f"Rim{k} start: {CORE_RIM_STARTS[k]}")
             builder.add_node(RimClass, CORE_RIM_STARTS[k])
     else:
         # ── Random core UAVs roaming inside the obstacle zone ──────────────
         for i, start in enumerate(random_uav_starts()):
             RandClass = make_random_uav(routing=args.routing_strategy, viz=viz)
-            logging.info(f"Random{i} start: {start}")
+            logging.debug(f"Random{i} start: {start}")
             builder.add_node(RandClass, start)
 
     # ── Satellites N, E, S, W ─────────────────────────────────────────────
@@ -148,7 +151,7 @@ def main() -> None:
             face=face, viz=viz, swcore=args.routing_strategy == "swcore"
         )
         start = sat_start(face)
-        logging.info(f"Sat-{face} start: {start}")
+        logging.debug(f"Sat-{face} start: {start}")
         builder.add_node(SatClass, start)
 
     # ── Scene bounds for visualisation ────────────────────────────────────
@@ -175,6 +178,8 @@ def main() -> None:
 
     # ── Run ────────────────────────────────────────────────────────────────
     simulation = builder.build()
+    # GrADyS-SIM installs its formatter and resets the root level during build.
+    configure_logging(LOG_LEVEL)
     simulation.start_simulation()
 
     logging.info("Simulation complete.")
