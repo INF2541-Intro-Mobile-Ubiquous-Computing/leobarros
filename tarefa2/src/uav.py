@@ -29,6 +29,7 @@ from src.swcore_mixin import SWCoreMixin
 from src.pubsub.pspeer_mixin import PSPeerMixin
 from src.pubsub.transport import PubSubTransportMixin
 from src.pubsub.adapter import PubSubAdapterMixin
+from src.pubsub.satellite_client import PubSubSatelliteMixin
 from utils.common.config import PSPEER_COLOR
 
 
@@ -178,14 +179,21 @@ def make_random_uav(routing: str = "flooding", viz: bool = False) -> type:
     return _Rand
 
 
-def make_satellite(face: str, viz: bool = False, swcore: bool = False) -> type:
+def make_satellite(face: str, viz: bool = False, swcore: bool = False, pubsub: bool = False) -> type:
     """
     Return a satellite protocol class for the given face.
 
     Satellites do NOT use routing mixins; ``swcore`` only enables the
     connect/disconnect/ack behaviour the SwCore core nodes rely on.
+    ``pubsub`` adds the contact-only application transport, without core routing.
     """
     BaseSat = make_satellite_protocol(face, swcore=swcore)
+    if pubsub:
+        if not swcore:
+            raise ValueError('Satellite Pub/Sub requires swcore')
+        class PubSubSat(PubSubSatelliteMixin, BaseSat):
+            pass
+        BaseSat = PubSubSat
 
     if viz:
         class _SatViz(SatVizMixin, BaseSat):

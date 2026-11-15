@@ -59,6 +59,13 @@ class PSPeerService:
         """Store a publication; return False for an already known message ID."""
         return self._topics.add_publication(publication)
 
+    def delivery_subscribers(self, publication: Publication, peer_id: int) -> tuple[int, ...]:
+        """Eligible subscribers owned by this peer's accepted subscription version."""
+        return tuple(sub.subscriber_id
+                     for sub in self._subscriptions.get_matching_subscriptions(publication)
+                     if self._subscription_versions.get((sub.subscriber_id, sub.topic), (0, None))[1]
+                     == peer_id)
+
     def fetch(self, subscriber_id: int, topic: str) -> tuple[Publication, ...]:
         """Read eligible, unconsumed history without marking it as delivered."""
         return self._consumption.get_unread(subscriber_id, topic)

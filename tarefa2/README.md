@@ -128,9 +128,9 @@ rim-to-rim delivery, with per-instance transport IDs and duplicate suppression.
 
 The return value indicates local dispatch or submission to the next hop, not
 confirmed delivery. Without a known next hop it returns `False`; no retry or
-queue is added. Satellite-addressed Pub/Sub delivery remains
-for subsequent stages. Existing SwCore
-satellite traffic keeps its original routing and buffers.
+queue is added. Connected satellites use the existing SwCore route table and
+radio unicast; unavailable satellites return `False` when already known as such.
+Existing SwCore satellite traffic keeps its original routing and buffers.
 
 Core clients select a single simulator node ID with `select_pspeer(node_id)`, then
 call `subscribe_pubsub(topic, accepted_regions)`, `publish_pubsub(publication)`
@@ -139,7 +139,7 @@ The adapter processes requests only at PSPeers. FETCH returns eligible history
 over the same radio transport using DELIVER, including an empty result; clients
 receive it through `on_pubsub_delivery(envelope)`. No consumption is marked,
 so repeated queries can return the same IDs. There is no automatic peer choice,
-spontaneous traffic or push delivery. Request/response logs are
+spontaneous generation of publications/subscriptions. Request/response logs are
 INFO; per-hop paths are DEBUG. `tests/test_pubsub_adapter.py` exercises this path.
 
 ### Subscription synchronization
@@ -177,8 +177,35 @@ copy contains different data. Repeated PUBLISH of an existing ID sends no replic
 Replication includes publications regardless of current subscription filters;
 FETCH still applies those filters. Losses can leave different histories and are
 not repaired by ACK, retry or repeated PUBLISH. This does not synchronize read
-state or add push delivery. `test_pubsub_replication.py` exercises publication
+state. `test_pubsub_replication.py` exercises publication
 through A and radio queries through B/C, duplicates, partial/total loss and delay.
+
+### Live delivery to subscribers
+
+On first storage of a PUBLISH or REPLICATE, each peer sends individual DELIVER
+messages to eligible subscribers whose current subscription version originated
+at that peer. This assigns one responsible peer per subscription when replicas
+agree, without exposing subscribers to the publisher. Received replicas never
+trigger another REPLICATE. Repeated publication IDs do not trigger another push.
+
+`DeliverEnvelope.is_push` distinguishes live deliveries from FETCH replies.
+Clients accept push from the selected peer, check their local topic/region filter
+and suppress repeated publication IDs before invoking `on_pubsub_delivery`.
+FETCH snapshots retain their previous behavior, including repeated IDs: receipt
+does not mark server-side consumption or synchronize read state.
+
+With `--pubsub`, satellites also expose the client API. Requests go through the
+current contact node only during the existing EXCHANGE state; incoming application
+deliveries are accepted only in that state. The core uses SwCore's `direct`/`hop`
+routes learned through its original connect/disconnect messages. Pub/Sub does not
+change movement, sensor uploads, departure timing, or the original dock deliveries.
+No automatic subscription, FETCH on reconnection, buffering or retry is added.
+
+Losses and stale subscription replicas can cause missed delivery. Selecting a
+different peer alone does not transfer subscription responsibility; unchanged
+filters still emit no new SYNC. Historical messages remain available via explicit
+FETCH. `test_pubsub_push.py` covers TF01–TF03, three responsible peers, a satellite
+reached in three radio hops, duplicate push, disconnection and delivery loss.
 
 ### Logging
 

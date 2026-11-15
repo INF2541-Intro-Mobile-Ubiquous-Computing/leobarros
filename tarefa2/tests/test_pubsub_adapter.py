@@ -48,7 +48,8 @@ class PubSubAdapterTests(unittest.TestCase):
                     super().handle_timer(timer)
 
             def on_pubsub_delivery(self, message):
-                self.deliveries.append(message)
+                if not message.is_push:  # these assertions exercise FETCH snapshots
+                    self.deliveries.append(message)
 
         class Peer(PSPeerMixin, Client):
             pspeer_slot = 0
@@ -74,7 +75,7 @@ class PubSubAdapterTests(unittest.TestCase):
                          [['eligible'], ['eligible']])
         self.assertEqual([p.message_id for p in peer.pspeer_service.fetch(0, 'T1')], ['eligible'])
         self.assertEqual(hub.deliveries, [])
-        self.assertEqual(len(hub.transmissions), 7)
+        self.assertEqual(len(hub.transmissions), 8)  # includes one live push
         for operation in ('SUBSCRIBE', 'PUBLISH', 'FETCH', 'DELIVER'):
             self.assertIn('operation=' + operation, self.logs)
         self.assertIn('node=1 source=0 destination=2 next=2 hops=2', self.logs)
@@ -100,7 +101,7 @@ class PubSubAdapterTests(unittest.TestCase):
         client, hub, peer = self.run_network(invalid=True)
         self.assertEqual(peer.pspeer_service.fetch(99, 'T1'), ())
         self.assertEqual(len(client.deliveries), 2)
-        self.assertEqual(len(peer.transmissions), 2)
+        self.assertEqual(len(peer.transmissions), 3)  # two FETCH replies and one push
 
     def test_factory_dispatch_overrides_transport_despite_peer_mro(self):
         for cls in (make_core_hub('swcore', pubsub=True),

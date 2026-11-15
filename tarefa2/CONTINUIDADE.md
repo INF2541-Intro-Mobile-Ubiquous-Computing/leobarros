@@ -1,6 +1,6 @@
 ﻿# Continuidade do projeto Tarefa 2
 
-Atualizado em 15/11/2026, após implementar a etapa 15. Leia este arquivo primeiro na nova conversa; depois, apenas os trechos de código relevantes à etapa autorizada. Este resumo não autoriza iniciar outra etapa automaticamente.
+Atualizado em 15/11/2026, após implementar a etapa 16. Leia este arquivo primeiro na nova conversa; depois, apenas os trechos de código relevantes à etapa autorizada. Este resumo não autoriza iniciar outra etapa automaticamente.
 
 ## Regras do usuário e modo econômico
 
@@ -31,9 +31,9 @@ Atualizado em 15/11/2026, após implementar a etapa 15. Leia este arquivo primei
 
 ## Estado atual e revisão pendente
 
-**Etapas 01–15 implementadas e testadas. Próxima: 16, somente após solicitação do usuário.** Os PSPeers processam SUBSCRIBE/PUBLISH/FETCH, sincronizam assinaturas e replicam publicações por broadcasts separados. Nenhum drone gera eventos espontâneos.
+**Etapas 01–16 implementadas e testadas. Próxima: 17, somente após solicitação do usuário.** Os PSPeers sincronizam assinaturas, replicam publicações e enviam DELIVER individual aos assinantes elegíveis. Satélites conectados têm cliente Pub/Sub opt-in. Não há geração espontânea de publicações/assinaturas.
 
-Na entrada da etapa 15, `git status --short tarefa2` estava limpo. As mudanças desta etapa ficam para revisão e commit do usuário; nenhum comando de staging ou commit foi executado pelo agente.
+Na entrada da etapa 16, `git status --short tarefa2` estava limpo. As mudanças desta etapa ficam para revisão e commit do usuário; nenhum comando de staging ou commit foi executado pelo agente.
 
 | Etapas concluídas | Resultado |
 | --- | --- |
@@ -47,6 +47,7 @@ Na entrada da etapa 15, `git status --short tarefa2` estava limpo. As mudanças 
 | 13 | Adaptador cliente/PSPeer e respostas FETCH pelo rádio |
 | 14 | SYNC de assinaturas por broadcast único, versões idempotentes e testes de perdas |
 | 15 | REPLICATE de publicações por broadcast único, deduplicação e consulta em B/C após publicação em A |
+| 16 | DELIVER individual por peer responsável, deduplicação de push e cliente de satélite durante contato |
 
 ## Contratos implementados
 
@@ -68,7 +69,7 @@ Arquivos em `src/pubsub/`:
 
 O transporte core usa os beacons/fresh_neighbors existentes e `_send()` do SwCore. Destino vizinho recebe diretamente; caso contrário, vai ao hub conhecido. O hub encaminha para o destino vizinho. Sem próximo salto, retorna False; um intermediário sem rota descarta. Não há discovery extra, retry, buffering Pub/Sub core–core ou confirmação. True significa envio ao próximo salto, **não entrega**. Destino próprio despacha localmente, sem unicast a si mesmo.
 
-O envelope externo `pubsub_core` contém `transport_id` por origem/contador, `source_id`, destino, saltos, próximo salto e payload da aplicação. Deduplicação por instância e limite de saltos. O emissor de aplicação permanece no envelope interno. Esse caminho suporta o core em estrela; **não é uma solução de roteamento arbitrário nem entrega Pub/Sub a satélites**. O caminho satélite–satélite original foi preservado.
+O envelope externo `pubsub_core` contém `transport_id` por origem/contador, `source_id`, destino, saltos, próximo salto e payload da aplicação. Deduplicação por instância e limite de saltos. O emissor de aplicação permanece no envelope interno. Além do core em estrela, desde a etapa 16 consulta `_rt` do SwCore para alcançar satélites conectados (`direct`/`hop`); indisponibilidade conhecida retorna False. Não há buffering Pub/Sub. O caminho satélite–satélite original foi preservado.
 
 ## Parâmetros e logs
 
@@ -85,8 +86,8 @@ Por pedido do usuário, todos os logs detalhados preexistentes da aplicação fo
 | 13 — concluída | Comunicar UAVs e PSPeers: processar SUBSCRIBE/PUBLISH/FETCH pelo adaptador. Cliente conhece apenas o PSPeer escolhido. Testar um UAV assinando, publicando e consultando através do rádio, com logs comprovando o caminho. Não antecipar sincronização. |
 | 14 — concluída | SYNC após alteração local, broadcast de alcance próprio, versões idempotentes, três réplicas e perdas testadas; sem repropagar, ACK ou retransmitir. |
 | 15 — concluída | Política confirmada pelo usuário: armazenar e emitir um broadcast REPLICATE para cada publicação nova; receptores deduplicam e não repropagam. Sem ACK/retry, admitindo históricos divergentes por perdas. |
-| **16 — próxima** | Entrega aos assinantes elegíveis via DELIVER/SwCore, destino individual, sem expor assinantes ao publicador. Considerar satélites disponíveis e deduplicação. TF01/02/03. |
-| 17 | Reconexão e consumo incremental: FETCH ao conectar, reutilização de buffers SwCore, distinguir pendente/enviado/recebido. TF06 com IDs exatos e reconexões repetidas. Resolver confirmação/controle distribuído de consumo. |
+| 16 — concluída | DELIVER individual aos assinantes elegíveis, responsabilidade pelo peer da versão da assinatura, cliente de satélite conectado, deduplicação de push. TF01/02/03 testados. |
+| **17 — próxima** | Reconexão e consumo incremental: FETCH ao conectar, reutilização de buffers SwCore, distinguir pendente/enviado/recebido. TF06 com IDs exatos e reconexões repetidas. Resolver confirmação/controle distribuído de consumo e troca de peer. |
 | 18 | Identificação única/estável de sensores; par→T2, ímpar→T1, preservando coleta original. Testar/logar ambas as paridades. |
 | 19 | Converter coleta dos satélites em publicações reais por tópico/paridade e região N/S/E/W; armazenar durante afastamento e transmitir no contato. |
 | 20 | Timers de publicações aleatórias do core em T1/T2, região C, semente reproduzível; entrega conforme filtro. TF04. |
@@ -124,7 +125,7 @@ Executar a partir de `tarefa2`:
 ../.venv/Scripts/python.exe -B -m src.main --no-viz --topology star --routing-strategy swcore
 ```
 
-- Último resultado: **105 testes passaram**, incluindo seis novos da etapa 15; suíte local: **45 testes**, runner verifica que nenhum módulo `gradysim` foi importado.
+- Último resultado: **112 testes passaram**, incluindo sete novos da etapa 16; suíte local: **45 testes**, runner verifica que nenhum módulo `gradysim` foi importado.
 - Transporte testado com três nós em posições 0/25/50 m, rádio 30 m: origem e destino não têm alcance direto, e a entrega exige dois saltos via hub. Testes incluem envio direto/local, duplicação, ausência de vizinhos, destino desconhecido, TTL e opt-in das fábricas.
 - Validação etapa 12: duas execuções independentes de 300 segundos (com/sem Pub/Sub) tiveram **55 uploads e 53 entregas satélite–satélite**, com os mesmos IDs, instantes de criação/entrega e saltos. Isso valida preservação do tráfego original; não são publicações Pub/Sub.
 - Logs `verification-*.log` e `.cache/` são ignorados. PowerShell pode rotular saída stderr normal do logging/unittest como `NativeCommandError` na redireção: conferir exit code e resultado real antes de diagnosticar falha.
@@ -133,8 +134,8 @@ Executar a partir de `tarefa2`:
 ## Retomada mínima
 
 1. Ler este resumo e verificar `git status --short tarefa2`.
-2. Aguardar/seguir a etapa explicitamente solicitada pelo usuário; a próxima prevista é 16.
-3. Para 16, consultar adaptador, serviço, seleção de assinantes e caminhos SwCore relevantes; definir a responsabilidade pela entrega entre réplicas para evitar duplicação, sem antecipar a etapa 17.
+2. Aguardar/seguir a etapa explicitamente solicitada pelo usuário; a próxima prevista é 17.
+3. Para 17, consultar adaptador, serviço, `satellite_client.py`, ConsumptionStore e buffers SwCore. Resolver confirmação/consumo distribuído e responsabilidade ao trocar de peer, preservando o tráfego original.
 4. Implementar e testar somente a etapa; apresentar resumo curto e parar para revisão/commit.
 
 ## Entrega da etapa 13
@@ -164,3 +165,13 @@ Executar a partir de `tarefa2`:
 - Não há entrega espontânea nem consumo distribuído. Os trechos das entregas anteriores que dizem que publicações não são replicadas são históricos.
 - Validação: 105 testes gerais passaram, incluindo seis novos de rádio; 45 locais passaram sem importar GrADyS-SIM (subconjunto dos 105). Testes publicam por um cliente em A e consultam via rádio em B/C/A, verificam filtros, conteúdo original, duplicatas, ingresso repetido por outro peer, perdas parciais/totais e atraso. Simulação padrão com Pub/Sub concluiu 300 s sem erros; eventos de replicação são exercitados pelos testes, pois ainda não há geração espontânea no cenário padrão.
 - Arquivos: modelos, adaptador, transporte, rádio, comentário de configuração, teste de modelos, novo `test_pubsub_replication.py`, README e continuidade. Nenhum commit/staging ou implementação da etapa 16.
+
+## Entrega da etapa 16
+
+- `PSPeerService.delivery_subscribers(publication, peer_id)` seleciona tópico/região e responsabilidade pelo emissor da versão vigente da assinatura. Primeiro armazenamento de PUBLISH ou REPLICATE gera push somente aos assinantes sob responsabilidade local. Réplicas continuam sem repropagação.
+- `DeliverEnvelope.is_push=False` preserva o contrato FETCH; True indica entrega espontânea. Cliente aceita apenas peer selecionado e destinatário próprio, verifica o filtro local e deduplica push por message_id. FETCH explícito continua podendo retornar IDs repetidos. Nenhum envio ou recebimento marca consumo no servidor.
+- `satellite_client.py` adiciona cliente opt-in na fábrica e no main. Usa `_ack_node` somente durante EXCHANGE; não cria rota ou registro global. Core encaminha pelo `_rt` SwCore existente e rádio unicast. Sem alteração da mobilidade, mensagens originais de dock, métricas de sensores ou condição de partida.
+- Limitações para a etapa 17: sem buffering Pub/Sub, retry, FETCH automático ou confirmação de consumo. Mudança apenas de `selected_pspeer` não transfere responsabilidade; filtro idêntico não cria versão nova. Perda de SYNC/REPLICATE ou partida durante o envio pode impedir entrega. Histórico continua consultável via FETCH; assinatura tardia não gera push retroativo nesta etapa.
+- Validação: 112 testes gerais e 45 locais passaram (locais são subconjunto). Sete novos testes cobrem TF01/02/03, três peers responsáveis por destinatários distintos, satélite em três saltos, duplicata com novo ID de transporte, desconexão, perda sem consumo/retry e composição opt-in da fábrica. Testes antigos de FETCH foram ajustados para observar respostas de consulta separadamente do novo push.
+- Simulação padrão com Pub/Sub concluiu 300 s sem erros. O cenário padrão ainda não gera assinaturas/publicações; os eventos Pub/Sub foram exercitados nos testes dedicados. Não foi repetida a comparação detalhada de métricas da etapa 12.
+- Arquivos: modelos, serviço, adaptador, transporte, novo cliente de satélite, fábricas/main, novo `test_pubsub_push.py`, ajustes nos testes de adaptador/replicação, README e continuidade. Nenhum commit/staging ou início da etapa 17. As afirmações históricas sobre ausência de push/cliente de satélite nas entregas anteriores não descrevem mais o estado atual.

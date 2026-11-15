@@ -62,7 +62,8 @@ class PubSubReplicationTests(unittest.TestCase):
                 super().handle_packet(message)
 
             def on_pubsub_delivery(self, message):
-                self.deliveries.append(message)
+                if not message.is_push:  # keep testing explicit queries independently of push
+                    self.deliveries.append(message)
 
         class Peer(PSPeerMixin, Core):
             pspeer_slot = 0

@@ -2,7 +2,7 @@
 
 The supported topology is star: send to a known neighbor or through the known
 hub. No global node registry, extra discovery flood, ACK or retry is used.
-Satellite-addressed application delivery is left to the later integration step.
+Connected satellites use SwCore's existing route table; no Pub/Sub buffering yet.
 """
 import json
 import logging
@@ -45,7 +45,7 @@ class PubSubTransportMixin:
         without a fresh route, return False; the caller retains responsibility.
         """
         if type(destination) is not int or destination < 0:
-            raise ValueError('destination must be a nonnegative core node ID')
+            raise ValueError('destination must be a nonnegative node ID')
         payload = message.to_dict()
         self._pubsub_sequence += 1
         source = self.provider.get_id()
@@ -64,7 +64,16 @@ class PubSubTransportMixin:
             return False
         neighbors = self.fresh_neighbors()
         destination = packet['destination']
-        if destination in neighbors:
+        route = self._rt.get(destination)
+        if route is not None:
+            if route['state'] == 'direct':
+                next_hop = destination
+            elif (route['state'] == 'hop' and route['next_hop'] in neighbors
+                  and route['next_hop'] != packet.get('sender_id')):
+                next_hop = route['next_hop']
+            else:
+                return False  # satellite unavailable: buffering belongs to stage 17
+        elif destination in neighbors:
             next_hop = destination
         else:
             hubs = sorted(node for node, entry in neighbors.items()

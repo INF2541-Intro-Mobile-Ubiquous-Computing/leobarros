@@ -5,12 +5,15 @@ from src.pubsub.models import (
     DeliverEnvelope, FetchEnvelope, Publication, PublishEnvelope,
     ReplicateEnvelope, SubscribeEnvelope, Subscription, SyncEnvelope,
 )
+from src.pubsub.subscription_store import matches
 
 
 class PubSubAdapterMixin:
     def initialize(self) -> None:
         super().initialize()
         self.selected_pspeer = None
+        self._client_subscriptions = {}
+        self._received_push_ids = set()
 
     def select_pspeer(self, node_id: int) -> None:
         """Choose one peer by simulator ID; no discovery or shared registry."""
@@ -25,8 +28,9 @@ class PubSubAdapterMixin:
 
     def subscribe_pubsub(self, topic, accepted_regions) -> bool:
         node = self.provider.get_id()
-        return self._send_request(SubscribeEnvelope(
-            node, Subscription(node, topic, accepted_regions)))
+        subscription = Subscription(node, topic, accepted_regions)
+        self._client_subscriptions[topic] = subscription
+        return self._send_request(SubscribeEnvelope(node, subscription))
 
     def publish_pubsub(self, publication: Publication) -> bool:
         node = self.provider.get_id()
@@ -44,6 +48,17 @@ class PubSubAdapterMixin:
             return
         if isinstance(message, DeliverEnvelope):
             if source_id == self.selected_pspeer and message.subscriber_id == node:
+                if message.is_push:
+                    publications = []
+                    for publication in message.publications:
+                        sub = self._client_subscriptions.get(publication.topic)
+                        if (sub is not None and matches(sub, publication)
+                                and publication.message_id not in self._received_push_ids):
+                            self._received_push_ids.add(publication.message_id)
+                            publications.append(publication)
+                    if not publications:
+                        return
+                    message = DeliverEnvelope(source_id, node, tuple(publications), is_push=True)
                 logging.info('[PUBSUB client] node=%s peer=%s operation=DELIVER count=%s',
                              node, source_id, len(message.publications))
                 self.on_pubsub_delivery(message)
@@ -67,10 +82,13 @@ class PubSubAdapterMixin:
                 return
             if service.publish(message.publication):
                 self.broadcast_pubsub_replication(ReplicateEnvelope(node, message.publication))
+                self._push_publication(message.publication)
         elif isinstance(message, ReplicateEnvelope):
             inserted = service.publish(message.publication)
             logging.info('[PUBSUB replicate] node=%s source=%s message_id=%s inserted=%s',
                          node, source_id, message.publication.message_id, inserted)
+            if inserted:
+                self._push_publication(message.publication)
             return  # Never re-broadcast a received replica, even when newly stored.
         elif isinstance(message, FetchEnvelope):
             if message.subscriber_id != source_id:
@@ -84,8 +102,16 @@ class PubSubAdapterMixin:
         logging.info('[PUBSUB peer] node=%s client=%s operation=%s',
                      node, source_id, message.operation.value)
 
+    def _push_publication(self, publication: Publication) -> None:
+        node = self.provider.get_id()
+        for subscriber in self.pspeer_service.delivery_subscribers(publication, node):
+            submitted = self.send_pubsub(
+                subscriber, DeliverEnvelope(node, subscriber, (publication,), is_push=True))
+            logging.info('[PUBSUB push] peer=%s subscriber=%s message_id=%s submitted=%s',
+                         node, subscriber, publication.message_id, submitted)
+
     def on_pubsub_delivery(self, message: DeliverEnvelope) -> None:
-        """Client callback for FETCH results, including empty results.
+        """Client callback for deduplicated push or FETCH results (including empty).
 
         Receipt does not mark consumption. Repeated FETCH may return the same IDs.
         """

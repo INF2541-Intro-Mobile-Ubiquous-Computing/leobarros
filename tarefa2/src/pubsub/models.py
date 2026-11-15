@@ -102,10 +102,13 @@ class FetchEnvelope(Envelope):
 class DeliverEnvelope(Envelope):
     subscriber_id: int
     publications: tuple[Publication, ...] = field(default_factory=tuple)
+    is_push: bool = False  # distinguish live delivery from a FETCH snapshot
     operation: ClassVar[Operation] = Operation.DELIVER
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "publications", tuple(self.publications))
+        if type(self.is_push) is not bool:
+            raise ValueError('is_push must be a boolean')
 
 
 @dataclass(frozen=True)

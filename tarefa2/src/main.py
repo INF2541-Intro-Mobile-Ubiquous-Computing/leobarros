@@ -156,7 +156,7 @@ def main() -> None:
     # ── Satellites N, E, S, W ─────────────────────────────────────────────
     for face in FACE_NAMES:
         SatClass = make_satellite(
-            face=face, viz=viz, swcore=args.routing_strategy == "swcore"
+            face=face, viz=viz, swcore=args.routing_strategy == "swcore", pubsub=args.pubsub
         )
         start = sat_start(face)
         logging.debug(f"Sat-{face} start: {start}")
