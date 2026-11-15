@@ -1,0 +1,62 @@
+﻿Especificação Trabalho 2 - Sistema Pub/Sub para Enxames de UAVs
+
+1. Objetivo e arquitetura
+
+Implementar e avaliar um sistema distribuído de comunicação Publish/Subscribe (Pub/Sub distribuído) com base no protocolo SwCore Routing, fornecido pelo professor (já implementado no repositório https://github.com/INF2541-Intro-Mobile-Ubiquous-Computing/routing-ricardo pelo Ricardo Leta).
+
+O sistema deverá permitir que UAVs do core e satélites criem tópicos, publiquem mensagens e assinem quaisquer tópicos, com filtros que determinem quais publicações devem receber.
+
+A arquitetura será composta por duas camadas:
+
+SwCore Routing: responsável pelo roteamento distribuído, encaminhamento por múltiplos saltos, atualização da alcançabilidade dos satélites e armazenamento temporário de mensagens para entrega após reconexão (funcionalidades já implementadas no repositório do Ricardo, só precisam ser reutilizadas).
+
+Pub/Sub Distribuido: responsável por gerenciar tópicos, assinaturas e filtros, identificar os destinatários elegíveis e solicitar o encaminhamento pelo SwCore, sem que o publicador precise conhecer os destinatários.
+
+A camada Pub/Sub será distribuída entre 3 PSPeers, os quais fazem parte dos nós do core, uniformemente distribuídos ao longo da topologia.
+
+2. Requisitos de implementação
+Topologia e Mobilidade
+O core permanecerá em posição fixa no board, organizado na mesma topologia do trabalho 1 e girando em torno do próprio centro.
+Os satélites iniciarão afastados, alinhados ao centro de cada lado da bounding box imaginária que envolve o core. Dois devem se deslocar horizontalmente e dois verticalmente.
+Cada satélite deve se aproximar em linha reta, aguardar no limite da bounding box até a aproximação de um UAV do core, realizar a comunicação (publicar/consumir mensagens dos tópicos) e voltar a se afastar.
+
+Tópicos, assinaturas e publicações
+
+Tópicos
+Para simplificação, serão criados apenas dois tópicos fixos (T1 e T2).  
+As assinaturas e publicações são aleatórias ao longo da simulação, isto é, de tempos em tempos devem surgir novas assinaturas e publicações (p.ex, a cada 5 segundos).
+Os sensores já presentes na simulação (ver repositório routing-ricardo) devem ter identificadores únicos, ímpares ou pares. Se o satélite encontrar um sensor par, deve publicar no tópico T2; inversamente, se encontrar um sensor ímpar, deve publicar no tópico T1. 
+Os nós do core também irão publicar em T1 e T2, mas de forma aleatória.
+
+Filtros
+Cada assinatura terá um filtro baseado na região de origem da publicação: N, S, E, W (satélites) ou C (qualquer UAV do core).
+Uma publicação será entregue exclusivamente aos assinantes do tópico cujos filtros incluam sua região de origem.
+Cada assinante que se inscrever em um tópico receberá todas as mensagens que estiverem na fila daquele tópico, desde que foi criado, respeitando o filtro. Ao retornar e solicitar mais mensagens daquele tópico, receberá somente as não lidas. 
+O número de filtros e a configuração de cada um é livre.
+
+Exemplos de Filtros: F1 = {N,S,E}; F2 = {N,S}; F3 = {E,W}; F4 = {C,S}.
+PSPeers e sincronização
+
+Devem ser utilizados três PSPeers, que não devem estar próximos um do outro.
+Todos os PSPeers deverão manter cópias completas dos tópicos e assinaturas, incluindo assinantes e respectivos filtros.
+Cada atualização em um PSPeer deverá gerar um multicast de sincronização contendo as mudanças (novas assinaturas) aos demais nós do core, sem retransmissão. Assume-se alcance de rádio suficiente para atingir todos os nós do core. Os PSpeers irão armazenar as mudanças nas filas de assinaturas, os demais nós irão simplesmente descartar. 
+Não é necessário implementar tolerância a falhas, desconexões de PSPeers, nem ACKs. Admite-se perda de mensagens.
+3. Validação e avaliação
+Sugestões de testes funcionais (opcionais, somente para garantir a robustez)
+
+TF01: publicação com um assinante elegível -> mensagem entregue.
+TF02: publicação com múltiplos assinantes elegíveis ->  entrega a todos.
+TF03: filtro incompatível -> mensagem não entregue.
+TF04: publicação por UAV do core -> entrega aos assinantes elegíveis.
+TF05: assinatura por UAV do core -> recebimento da publicação.
+TF06: destinatário retornando após já ter consumido mensagens => armazenamento e entrega das mensagens não lidas.
+
+Métricas a coletar (Ainda a definir)
+
+As métricas abaixo são apenas ideias surgidas durante a aula. O professor irá confirmar as métricas a serem coletadas até a próxima aula (18/11).
+
+Taxa de entrega: percentual de entregas esperadas efetivamente realizadas.
+
+Latência: tempo entre publicação e entrega a cada assinante.
+
+Número de saltos: transmissões envolvidas em cada entrega.
