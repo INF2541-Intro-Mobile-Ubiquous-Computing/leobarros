@@ -124,6 +124,7 @@ DTN_SESSION_COOLDOWN = 3.0          # seconds between epidemic sessions
 DTN_MAX_HOPS = 6                    # max copies/hops for DTN routing
 GEOCAST_REGION_RADIUS = DOCK_RANGE  # region radius for geocasting
 SWCORE_MAX_HOPS = 8                 # hop limit for swcore forwarding
+PUBSUB_TRANSPORT_MAX_HOPS = 8       # core-addressed Pub/Sub radio hop limit
 
 # ---------------------------------------------------------------------------
 # Messages

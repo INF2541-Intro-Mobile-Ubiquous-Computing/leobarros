@@ -117,6 +117,21 @@ The original mobility and sensor seeds remain unchanged. Setting
 
 ## Environment setup
 
+### Core Pub/Sub transport
+
+With `--pubsub`, hub and rim protocols expose `send_pubsub(destination, envelope)`
+and the receive hook `handle_pubsub(envelope, source_id)`. The adapter reuses
+SwCore's radio unicast and beacon-based neighbor discovery: direct neighbor
+first, otherwise the known hub. It supports the star core, including two-hop
+rim-to-rim delivery, with per-instance transport IDs and duplicate suppression.
+`PUBSUB_TRANSPORT_MAX_HOPS` bounds forwarding. Sending to self dispatches locally.
+
+The return value indicates local dispatch or submission to the next hop, not
+confirmed delivery. Without a known next hop it returns `False`; no retry or
+queue is added. Application operation processing, satellite-addressed Pub/Sub
+delivery and synchronization remain for subsequent stages. Existing SwCore
+satellite traffic keeps its original routing and buffers.
+
 ### Logging
 
 Set `LOG_LEVEL` in `utils/common/config.py` before starting a run:

@@ -135,14 +135,14 @@ def main() -> None:
 
     if args.topology == "star":
         # ── Core hub ───────────────────────────────────────────────────────
-        HubClass = make_core_hub(routing=args.routing_strategy, viz=viz)
+        HubClass = make_core_hub(routing=args.routing_strategy, viz=viz, pubsub=args.pubsub)
         logging.debug(f"Hub start: {CORE_HUB_START}")
         builder.add_node(HubClass, CORE_HUB_START)
 
         # ── Core rim nodes 0..7 ────────────────────────────────────────────
         for k in range(CORE_RIM_NODES):
             RimClass = make_core_rim(k=k, routing=args.routing_strategy, viz=viz,
-                                    pspeer=args.pubsub and k in PSPEER_SLOTS)
+                                    pspeer=args.pubsub and k in PSPEER_SLOTS, pubsub=args.pubsub)
             logging.debug(f"Rim{k} start: {CORE_RIM_STARTS[k]}")
             builder.add_node(RimClass, CORE_RIM_STARTS[k])
     else:

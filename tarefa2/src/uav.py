@@ -27,6 +27,7 @@ from src.dtn_mixin import DTNMixin
 from src.geocasting_mixin import GeocastingMixin
 from src.swcore_mixin import SWCoreMixin
 from src.pubsub.pspeer_mixin import PSPeerMixin
+from src.pubsub.transport import PubSubTransportMixin
 from utils.common.config import PSPEER_COLOR
 
 
@@ -38,7 +39,13 @@ _ROUTING_MIXINS = {
 }
 
 
-def _routing_mixin(name: str) -> type:
+def _routing_mixin(name: str, pubsub: bool = False) -> type:
+    if pubsub:
+        if name != 'swcore':
+            raise ValueError('Pub/Sub transport requires swcore routing')
+        class PubSubSWCore(PubSubTransportMixin, SWCoreMixin):
+            pass
+        return PubSubSWCore
     try:
         return _ROUTING_MIXINS[name.lower()]
     except (AttributeError, KeyError) as exc:
@@ -101,14 +108,14 @@ class SatVizMixin:
 # Factories
 # ---------------------------------------------------------------------------
 
-def make_core_hub(routing: str = "flooding", viz: bool = False) -> type:
+def make_core_hub(routing: str = "flooding", viz: bool = False, pubsub: bool = False) -> type:
     """
     Return a hub (leader) protocol class.
 
     MRO (most-derived first):
         [HubVizMixin,] CoreDockMixin, RoutingMixin, CoreHubProtocol
     """
-    RoutingMixin = _routing_mixin(routing)
+    RoutingMixin = _routing_mixin(routing, pubsub=pubsub)
 
     if viz:
         class _HubViz(HubVizMixin, NeighborMixin, CoreDockMixin, RoutingMixin, CoreHubProtocol):
@@ -123,14 +130,14 @@ def make_core_hub(routing: str = "flooding", viz: bool = False) -> type:
 
 
 def make_core_rim(k: int, routing: str = "flooding", viz: bool = False,
-                  pspeer: bool = False) -> type:
+                  pspeer: bool = False, pubsub: bool = False) -> type:
     """
     Return a rim (follower) protocol class for slot k.
 
     MRO (most-derived first):
         [RimVizMixin,] CoreDockMixin, RoutingMixin, CoreRimProtocol_k
     """
-    RoutingMixin = _routing_mixin(routing)
+    RoutingMixin = _routing_mixin(routing, pubsub=pubsub)
     BaseRim = make_core_rim_protocol(k)
     if pspeer:
         class PeerRim(PSPeerMixin, BaseRim):
