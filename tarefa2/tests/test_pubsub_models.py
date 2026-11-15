@@ -3,7 +3,7 @@ import unittest
 
 from src.pubsub.models import (
     Publication, Subscription, Region, Operation, SubscribeEnvelope,
-    PublishEnvelope, FetchEnvelope, DeliverEnvelope, SyncEnvelope,
+    PublishEnvelope, ReplicateEnvelope, FetchEnvelope, DeliverEnvelope, SyncEnvelope,
     envelope_from_dict, envelope_from_json,
 )
 
@@ -18,6 +18,7 @@ class PubSubModelsTests(unittest.TestCase):
         envelopes = (
             SubscribeEnvelope(15, self.subscription),
             PublishEnvelope(12, self.publication),
+            ReplicateEnvelope(8, self.publication),
             FetchEnvelope(15, 15, 'T1'),
             DeliverEnvelope(8, 15, (self.publication,)),
             SyncEnvelope(8, (self.subscription,)),

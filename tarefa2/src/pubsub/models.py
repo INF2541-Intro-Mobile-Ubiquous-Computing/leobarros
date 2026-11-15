@@ -24,6 +24,7 @@ class Operation(str, Enum):
     FETCH = "FETCH"
     DELIVER = "DELIVER"
     SYNC = "SYNC"
+    REPLICATE = "REPLICATE"
 
 
 @dataclass(frozen=True)
@@ -83,6 +84,14 @@ class PublishEnvelope(Envelope):
 
 
 @dataclass(frozen=True)
+class ReplicateEnvelope(Envelope):
+    """Peer-to-peer copy; sender is the peer, publication origin is unchanged."""
+
+    publication: Publication
+    operation: ClassVar[Operation] = Operation.REPLICATE
+
+
+@dataclass(frozen=True)
 class FetchEnvelope(Envelope):
     subscriber_id: int
     topic: str
@@ -136,6 +145,9 @@ def envelope_from_dict(data: dict) -> Envelope:
         if operation == Operation.PUBLISH:
             fields["publication"] = Publication(**fields["publication"])
             return PublishEnvelope(**fields)
+        if operation == Operation.REPLICATE:
+            fields["publication"] = Publication(**fields["publication"])
+            return ReplicateEnvelope(**fields)
         if operation == Operation.FETCH:
             return FetchEnvelope(**fields)
         if operation == Operation.DELIVER:

@@ -1,9 +1,9 @@
-"""Core UAV requests and subscription synchronization; no receipt ACK."""
+"""Core UAV requests and peer replication; no receipt ACK."""
 import logging
 
 from src.pubsub.models import (
     DeliverEnvelope, FetchEnvelope, Publication, PublishEnvelope,
-    SubscribeEnvelope, Subscription, SyncEnvelope,
+    ReplicateEnvelope, SubscribeEnvelope, Subscription, SyncEnvelope,
 )
 
 
@@ -65,7 +65,13 @@ class PubSubAdapterMixin:
         elif isinstance(message, PublishEnvelope):
             if message.publication.origin_id != source_id:
                 return
-            service.publish(message.publication)
+            if service.publish(message.publication):
+                self.broadcast_pubsub_replication(ReplicateEnvelope(node, message.publication))
+        elif isinstance(message, ReplicateEnvelope):
+            inserted = service.publish(message.publication)
+            logging.info('[PUBSUB replicate] node=%s source=%s message_id=%s inserted=%s',
+                         node, source_id, message.publication.message_id, inserted)
+            return  # Never re-broadcast a received replica, even when newly stored.
         elif isinstance(message, FetchEnvelope):
             if message.subscriber_id != source_id:
                 return

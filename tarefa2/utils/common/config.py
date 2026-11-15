@@ -125,7 +125,7 @@ DTN_MAX_HOPS = 6                    # max copies/hops for DTN routing
 GEOCAST_REGION_RADIUS = DOCK_RANGE  # region radius for geocasting
 SWCORE_MAX_HOPS = 8                 # hop limit for swcore forwarding
 PUBSUB_TRANSPORT_MAX_HOPS = 8       # core-addressed Pub/Sub radio hop limit
-PUBSUB_SYNC_RANGE = CORE_DIAMETER + 1.0  # single-hop SYNC only; ordinary radio stays at COMM_RANGE
+PUBSUB_SYNC_RANGE = CORE_DIAMETER + 1.0  # single-hop SYNC/REPLICATE; ordinary radio stays at COMM_RANGE
 
 # ---------------------------------------------------------------------------
 # Messages

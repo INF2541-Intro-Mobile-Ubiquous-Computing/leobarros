@@ -152,17 +152,33 @@ and delayed older updates and break concurrent ties deterministically. It does
 not establish wall-clock recency. Version zero is legacy data and is not applied.
 
 In Pub/Sub mode, the local `PubSubCommunicationHandler` uses
-`PUBSUB_SYNC_RANGE = CORE_DIAMETER + 1.0` (59.5 m) only for SYNC broadcasts,
+`PUBSUB_SYNC_RANGE = CORE_DIAMETER + 1.0` (59.5 m) for SYNC and REPLICATE broadcasts,
 implementing the specification's core-wide radio assumption. Ordinary traffic
-retains `COMM_RANGE = 30.0`; configured radio loss and delay still apply to SYNC.
+retains `COMM_RANGE = 30.0`; configured radio loss and delay still apply to both.
 The installed simulator is unchanged. Broadcasts may physically reach nearby
 non-core nodes, which ignore this message type. No global application registry
 or hub relay participates in synchronization.
 
 Lost updates leave replicas stale: there is no retry or repair, including when
-the same client filter is submitted again unchanged. Publications and consumption
-are not synchronized. `test_subscription_sync.py` and `test_pubsub_sync_radio.py`
+the same client filter is submitted again unchanged. Consumption is not
+synchronized. `test_subscription_sync.py` and `test_pubsub_sync_radio.py`
 cover ordering, three replicas, duplicate packets, losses and radio isolation.
+
+### Publication replication
+
+Under the policy confirmed for stage 15, a PSPeer accepting a new PUBLISH stores
+it and sends one REPLICATE broadcast to the other peers, separate from SYNC.
+`ReplicateEnvelope` identifies the sending peer while preserving the original
+publication (ID, topic, origin, timestamp and payload). Peers store received
+copies without re-broadcasting; other nodes discard them. Storage deduplicates
+by `message_id`, retaining the first copy received at each peer, even if a later
+copy contains different data. Repeated PUBLISH of an existing ID sends no replica.
+
+Replication includes publications regardless of current subscription filters;
+FETCH still applies those filters. Losses can leave different histories and are
+not repaired by ACK, retry or repeated PUBLISH. This does not synchronize read
+state or add push delivery. `test_pubsub_replication.py` exercises publication
+through A and radio queries through B/C, duplicates, partial/total loss and delay.
 
 ### Logging
 

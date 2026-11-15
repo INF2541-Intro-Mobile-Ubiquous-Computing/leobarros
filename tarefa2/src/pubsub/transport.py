@@ -7,14 +7,23 @@ Satellite-addressed application delivery is left to the later integration step.
 import json
 import logging
 
-from src.pubsub.models import Envelope, SyncEnvelope, envelope_from_dict
-from src.pubsub.radio import SyncBroadcastCommand
+from src.pubsub.models import Envelope, ReplicateEnvelope, SyncEnvelope, envelope_from_dict
+from src.pubsub.radio import ReplicateBroadcastCommand, SyncBroadcastCommand
 from utils.common.config import PUBSUB_TRANSPORT_MAX_HOPS
 
 
 class PubSubTransportMixin:
     transport_msg_type = 'pubsub_core'
     sync_msg_type = 'pubsub_sync'
+    replicate_msg_type = 'pubsub_replicate'
+
+    def broadcast_pubsub_replication(self, message: ReplicateEnvelope) -> None:
+        """Send one copy to the core; receivers do not forward or acknowledge."""
+        source = self.provider.get_id()
+        packet = dict(msg_type=self.replicate_msg_type, source_id=source, payload=message.to_dict())
+        self.provider.send_communication_command(ReplicateBroadcastCommand(json.dumps(packet)))
+        logging.info('[PUBSUB replicate] node=%s message_id=%s action=broadcast',
+                     source, message.publication.message_id)
 
     def broadcast_pubsub_sync(self, message: SyncEnvelope) -> None:
         """Send one core-wide SYNC; receivers never forward this packet."""
@@ -75,6 +84,17 @@ class PubSubTransportMixin:
             packet = json.loads(message)
         except json.JSONDecodeError:
             return super().handle_packet(message)
+        if isinstance(packet, dict) and packet.get('msg_type') == self.replicate_msg_type:
+            try:
+                envelope = envelope_from_dict(packet['payload'])
+                source = packet['source_id']
+                if (type(source) is int and source >= 0
+                        and isinstance(envelope, ReplicateEnvelope)
+                        and envelope.sender_id == source):
+                    self.handle_pubsub(envelope, source)
+            except (KeyError, TypeError, ValueError):
+                logging.debug('Discarding malformed Pub/Sub replication packet')
+            return
         if isinstance(packet, dict) and packet.get('msg_type') == self.sync_msg_type:
             try:
                 envelope = envelope_from_dict(packet['payload'])

@@ -1,6 +1,6 @@
 ﻿# Continuidade do projeto Tarefa 2
 
-Atualizado em 15/11/2026, após implementar a etapa 14. Leia este arquivo primeiro na nova conversa; depois, apenas os trechos de código relevantes à etapa autorizada. Este resumo não autoriza iniciar outra etapa automaticamente.
+Atualizado em 15/11/2026, após implementar a etapa 15. Leia este arquivo primeiro na nova conversa; depois, apenas os trechos de código relevantes à etapa autorizada. Este resumo não autoriza iniciar outra etapa automaticamente.
 
 ## Regras do usuário e modo econômico
 
@@ -31,9 +31,9 @@ Atualizado em 15/11/2026, após implementar a etapa 14. Leia este arquivo primei
 
 ## Estado atual e revisão pendente
 
-**Etapas 01–14 implementadas e testadas. Próxima: 15, somente após solicitação do usuário.** Os PSPeers processam SUBSCRIBE/PUBLISH/FETCH do core e sincronizam alterações de assinaturas por broadcast único. Nenhum drone gera eventos espontâneos.
+**Etapas 01–15 implementadas e testadas. Próxima: 16, somente após solicitação do usuário.** Os PSPeers processam SUBSCRIBE/PUBLISH/FETCH, sincronizam assinaturas e replicam publicações por broadcasts separados. Nenhum drone gera eventos espontâneos.
 
-Na entrada da etapa 14, `git status --short tarefa2` estava limpo. As mudanças desta etapa ficam para revisão e commit do usuário; nenhum comando de staging ou commit foi executado pelo agente.
+Na entrada da etapa 15, `git status --short tarefa2` estava limpo. As mudanças desta etapa ficam para revisão e commit do usuário; nenhum comando de staging ou commit foi executado pelo agente.
 
 | Etapas concluídas | Resultado |
 | --- | --- |
@@ -46,6 +46,7 @@ Na entrada da etapa 14, `git status --short tarefa2` estava limpo. As mudanças 
 | 12 | Transporte core–core opt-in, direto ou via hub, com rádio simulado e callback de recepção |
 | 13 | Adaptador cliente/PSPeer e respostas FETCH pelo rádio |
 | 14 | SYNC de assinaturas por broadcast único, versões idempotentes e testes de perdas |
+| 15 | REPLICATE de publicações por broadcast único, deduplicação e consulta em B/C após publicação em A |
 
 ## Contratos implementados
 
@@ -83,8 +84,8 @@ Por pedido do usuário, todos os logs detalhados preexistentes da aplicação fo
 | --- | --- |
 | 13 — concluída | Comunicar UAVs e PSPeers: processar SUBSCRIBE/PUBLISH/FETCH pelo adaptador. Cliente conhece apenas o PSPeer escolhido. Testar um UAV assinando, publicando e consultando através do rádio, com logs comprovando o caminho. Não antecipar sincronização. |
 | 14 — concluída | SYNC após alteração local, broadcast de alcance próprio, versões idempotentes, três réplicas e perdas testadas; sem repropagar, ACK ou retransmitir. |
-| **15 — próxima** | Distribuir/replicar publicações entre PSPeers, deduplicar e evitar ciclos, separadamente de assinaturas. Publicar em A e consultar B/C. **Política de replicação ainda precisa ser confirmada**, pois é proposta do roteiro, não exigência inequívoca da especificação. |
-| 16 | Entrega aos assinantes elegíveis via DELIVER/SwCore, destino individual, sem expor assinantes ao publicador. Considerar satélites disponíveis e deduplicação. TF01/02/03. |
+| 15 — concluída | Política confirmada pelo usuário: armazenar e emitir um broadcast REPLICATE para cada publicação nova; receptores deduplicam e não repropagam. Sem ACK/retry, admitindo históricos divergentes por perdas. |
+| **16 — próxima** | Entrega aos assinantes elegíveis via DELIVER/SwCore, destino individual, sem expor assinantes ao publicador. Considerar satélites disponíveis e deduplicação. TF01/02/03. |
 | 17 | Reconexão e consumo incremental: FETCH ao conectar, reutilização de buffers SwCore, distinguir pendente/enviado/recebido. TF06 com IDs exatos e reconexões repetidas. Resolver confirmação/controle distribuído de consumo. |
 | 18 | Identificação única/estável de sensores; par→T2, ímpar→T1, preservando coleta original. Testar/logar ambas as paridades. |
 | 19 | Converter coleta dos satélites em publicações reais por tópico/paridade e região N/S/E/W; armazenar durante afastamento e transmitir no contato. |
@@ -100,7 +101,7 @@ Marcos: M2 (lógica local) concluído na 10; M3 assinaturas sincronizadas conclu
 
 ## Questões importantes ainda não resolvidas
 
-- Alcance do SYNC resolvido na etapa 14: `radio.py` estende o handler local, usando `PUBSUB_SYNC_RANGE=CORE_DIAMETER+1.0` (59,5 m) exclusivamente para `SyncBroadcastCommand`. Rádio comum continua em 30 m. Preserva perda/atraso do meio; não altera dependência, não usa flooding nem registro global de aplicação. Nós fora do core podem ouvir e ignoram esse tipo de pacote.
+- Alcance resolvido: `radio.py` usa `PUBSUB_SYNC_RANGE=CORE_DIAMETER+1.0` (59,5 m) para `SyncBroadcastCommand` e, desde a etapa 15, `ReplicateBroadcastCommand`. Rádio comum continua em 30 m. Preserva perda/atraso do meio; não altera dependência, não usa flooding nem registro global de aplicação. Nós fora do core podem ouvir e ignoram esses tipos de pacote.
 - Semântica de confirmação/consumo: consultas nunca marcam consumo; o estado local existe, mas nenhum mecanismo de rede o confirma. O roteiro alerta para não inventar garantia de entrega. Como manter leitura ao trocar de PSPeer também exige atenção nas etapas de integração.
 - Não estão implementadas validações de pertencimento do tópico a T1/T2 nem validação completa de IDs/tipos nos modelos. O roteiro da etapa 05 menciona validações mais amplas; não afirmar que isso já está coberto. Não corrigir fora do escopo sem necessidade/autorização.
 - Base herdada tem `_SAT_BY_FACE`, `_DOCKED_SATS`, `HUB_SPIN_STATE` e métricas globais. Não usar esses padrões para nova comunicação Pub/Sub. Migração ampla da base não foi autorizada.
@@ -123,7 +124,7 @@ Executar a partir de `tarefa2`:
 ../.venv/Scripts/python.exe -B -m src.main --no-viz --topology star --routing-strategy swcore
 ```
 
-- Último resultado: **99 testes passaram**, incluindo nove novos da etapa 14; suíte local: **45 testes**, runner verifica que nenhum módulo `gradysim` foi importado.
+- Último resultado: **105 testes passaram**, incluindo seis novos da etapa 15; suíte local: **45 testes**, runner verifica que nenhum módulo `gradysim` foi importado.
 - Transporte testado com três nós em posições 0/25/50 m, rádio 30 m: origem e destino não têm alcance direto, e a entrega exige dois saltos via hub. Testes incluem envio direto/local, duplicação, ausência de vizinhos, destino desconhecido, TTL e opt-in das fábricas.
 - Validação etapa 12: duas execuções independentes de 300 segundos (com/sem Pub/Sub) tiveram **55 uploads e 53 entregas satélite–satélite**, com os mesmos IDs, instantes de criação/entrega e saltos. Isso valida preservação do tráfego original; não são publicações Pub/Sub.
 - Logs `verification-*.log` e `.cache/` são ignorados. PowerShell pode rotular saída stderr normal do logging/unittest como `NativeCommandError` na redireção: conferir exit code e resultado real antes de diagnosticar falha.
@@ -132,8 +133,8 @@ Executar a partir de `tarefa2`:
 ## Retomada mínima
 
 1. Ler este resumo e verificar `git status --short tarefa2`.
-2. Aguardar/seguir a etapa explicitamente solicitada pelo usuário; a próxima prevista é 15.
-3. Para 15, confirmar a política de replicação de publicações indicada acima; consultar somente os contratos e arquivos relevantes.
+2. Aguardar/seguir a etapa explicitamente solicitada pelo usuário; a próxima prevista é 16.
+3. Para 16, consultar adaptador, serviço, seleção de assinantes e caminhos SwCore relevantes; definir a responsabilidade pela entrega entre réplicas para evitar duplicação, sem antecipar a etapa 17.
 4. Implementar e testar somente a etapa; apresentar resumo curto e parar para revisão/commit.
 
 ## Entrega da etapa 13
@@ -154,3 +155,12 @@ Executar a partir de `tarefa2`:
 - Publicações e consumo não são sincronizados. Os limites descritos na entrega da etapa 13 quanto à ausência de sincronização são históricos.
 - Validação: 99 testes gerais e 45 locais passaram (os locais fazem parte dos 99). Nove novos testes cobrem versões, concorrência, consumo preservado, três réplicas via rádio, duplicatas, perdas, alcance e descarte por não peer. Simulação completa com Pub/Sub chegou a 300 s sem erros; os eventos SYNC foram exercitados nos testes dedicados, pois o cenário padrão ainda não gera assinaturas espontâneas.
 - Arquivos: modelos, serviço, adaptador, transporte, novo `radio.py`, `main.py`, configuração, dois novos arquivos de testes, runner local, README e este resumo. Sem início da etapa 15.
+
+## Entrega da etapa 15
+
+- Política de replicação explicitamente confirmada pelo usuário: armazenar a publicação e fazer um broadcast aos demais peers, pelo mesmo alcance ampliado do SYNC, em mensagem separada. Receptores deduplicam por ID, sem repropagar, ACK ou retry; perdas podem deixar históricos distintos.
+- Novo `ReplicateEnvelope(sender_id, publication)` e operação REPLICATE. O emissor é o PSPeer; `publication.origin_id`, região, tópico, timestamp e payload são preservados. Pacote externo `pubsub_replicate`, comando de rádio `ReplicateBroadcastCommand`.
+- Adaptador emite réplica somente quando `service.publish()` aceita um PUBLISH novo. Réplicas recebidas só são armazenadas; nós sem serviço descartam. Primeira cópia por ID prevalece localmente, inclusive quando outro conteúdo chega com o mesmo ID. Republicar um ID já conhecido não repara perdas.
+- Não há entrega espontânea nem consumo distribuído. Os trechos das entregas anteriores que dizem que publicações não são replicadas são históricos.
+- Validação: 105 testes gerais passaram, incluindo seis novos de rádio; 45 locais passaram sem importar GrADyS-SIM (subconjunto dos 105). Testes publicam por um cliente em A e consultam via rádio em B/C/A, verificam filtros, conteúdo original, duplicatas, ingresso repetido por outro peer, perdas parciais/totais e atraso. Simulação padrão com Pub/Sub concluiu 300 s sem erros; eventos de replicação são exercitados pelos testes, pois ainda não há geração espontânea no cenário padrão.
+- Arquivos: modelos, adaptador, transporte, rádio, comentário de configuração, teste de modelos, novo `test_pubsub_replication.py`, README e continuidade. Nenhum commit/staging ou implementação da etapa 16.
