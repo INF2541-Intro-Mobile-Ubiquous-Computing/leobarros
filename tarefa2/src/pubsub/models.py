@@ -101,13 +101,16 @@ class DeliverEnvelope(Envelope):
 
 @dataclass(frozen=True)
 class SyncEnvelope(Envelope):
-    """Subscription changes only; no replication or conflict policy is implied."""
+    """Subscription delta with a Lamport version; sender ID breaks version ties."""
 
     subscriptions: tuple[Subscription, ...] = field(default_factory=tuple)
+    version: int = 0  # zero preserves legacy data; live synchronization requires > 0
     operation: ClassVar[Operation] = Operation.SYNC
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "subscriptions", tuple(self.subscriptions))
+        if type(self.version) is not int or self.version < 0:
+            raise ValueError('SYNC version must be a nonnegative integer')
 
 
 def _json_default(value: Any) -> list:

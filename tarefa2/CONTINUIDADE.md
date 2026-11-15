@@ -1,6 +1,6 @@
 ﻿# Continuidade do projeto Tarefa 2
 
-Atualizado em 15/11/2026, após implementar a etapa 13. Leia este arquivo primeiro na nova conversa; depois, apenas os trechos de código relevantes à etapa autorizada. Este resumo não autoriza iniciar outra etapa automaticamente.
+Atualizado em 15/11/2026, após implementar a etapa 14. Leia este arquivo primeiro na nova conversa; depois, apenas os trechos de código relevantes à etapa autorizada. Este resumo não autoriza iniciar outra etapa automaticamente.
 
 ## Regras do usuário e modo econômico
 
@@ -31,9 +31,9 @@ Atualizado em 15/11/2026, após implementar a etapa 13. Leia este arquivo primei
 
 ## Estado atual e revisão pendente
 
-**Etapas 01–13 implementadas e testadas. Próxima: 14, somente após solicitação do usuário.** Os PSPeers processam SUBSCRIBE/PUBLISH/FETCH do core e respondem consultas pelo rádio. Nenhum drone gera eventos espontâneos.
+**Etapas 01–14 implementadas e testadas. Próxima: 15, somente após solicitação do usuário.** Os PSPeers processam SUBSCRIBE/PUBLISH/FETCH do core e sincronizam alterações de assinaturas por broadcast único. Nenhum drone gera eventos espontâneos.
 
-Na preparação deste resumo, as mudanças da etapa 12 estavam **staged pelo usuário**: README, `src/main.py`, `src/uav.py`, `utils/common/config.py`, `src/pubsub/transport.py` e `tests/test_pubsub_transport.py`. Não presumir que o commit ocorreu; consultar `git status` sem modificar o índice. Este resumo é uma alteração documental posterior.
+Na entrada da etapa 14, `git status --short tarefa2` estava limpo. As mudanças desta etapa ficam para revisão e commit do usuário; nenhum comando de staging ou commit foi executado pelo agente.
 
 | Etapas concluídas | Resultado |
 | --- | --- |
@@ -44,6 +44,8 @@ Na preparação deste resumo, as mudanças da etapa 12 estavam **staged pelo usu
 | 09–10 | `PSPeerService`, regressões e suíte local independente do simulador |
 | 11 | Três rims com serviço PSPeer próprio, identificação INFO e cor verde |
 | 12 | Transporte core–core opt-in, direto ou via hub, com rádio simulado e callback de recepção |
+| 13 | Adaptador cliente/PSPeer e respostas FETCH pelo rádio |
+| 14 | SYNC de assinaturas por broadcast único, versões idempotentes e testes de perdas |
 
 ## Contratos implementados
 
@@ -51,17 +53,17 @@ Arquivos em `src/pubsub/`:
 
 - `models.py`: dataclasses `Publication(message_id, topic, origin_id, origin_region, created_at, payload)` e `Subscription(subscriber_id, topic, accepted_regions)`. Regiões N/S/E/W/C. Filtro normalizado para `frozenset`. Dataclasses frozen, mas payload é mutável; não presumir imutabilidade profunda.
 - Envelopes: `SubscribeEnvelope(sender_id, subscription)`, `PublishEnvelope(sender_id, publication)`, `FetchEnvelope(sender_id, subscriber_id, topic)`, `DeliverEnvelope(sender_id, subscriber_id, publications)` e `SyncEnvelope(sender_id, subscriptions)`. Todos usam `msg_type='pubsub'` e operação explícita. `to_json/to_dict` e `envelope_from_json/envelope_from_dict`; serialização determinística, regiões ordenadas.
-- `SyncEnvelope` atualmente transporta **somente assinaturas**, sem versão/ID de atualização. Será necessário estender na etapa apropriada.
+- `SyncEnvelope` transporta **somente assinaturas** e `version` (inteiro não negativo). Versão zero preserva leitura de dados antigos, mas não é aplicada. Atualizações usam contador Lamport positivo e ID do emissor para desempate, por chave `(subscriber_id, topic)`.
 - `topic_store.py`: `TopicStore.add_publication()` retorna True se inseriu, False se ID já existe em qualquer tópico da mesma instância; primeira versão prevalece. `get_history(topic)` devolve snapshot em tupla, ordem de chegada, mantendo `created_at`; cópias profundas na entrada/consulta.
 - `subscription_store.py`: `matches(subscription, publication)` exige tópico igual e região aceita. `add_subscription()` insere/substitui filtro por `(subscriber_id, topic)`, retornando se mudou. `get_subscription()` e `get_matching_subscriptions()`.
 - `consumption_store.py`: recebe stores locais no construtor; `get_unread(subscriber_id, topic)` retorna histórico elegível não consumido. Consultas não alteram estado. `mark_consumed(subscriber_id, topic, message_id)` registra confirmação explícita; False para assinatura/ID desconhecido ou repetição. Não confere filtro atual, permitindo confirmação tardia após troca do filtro. O chamador é responsável por confirmar recebimento real. Não há ACK de rede.
-- `pspeer_service.py`: cada `PSPeerService()` cria seus próprios stores; API `subscribe`, `publish`, `fetch`, `mark_consumed`. Ainda sem processamento de envelopes, seleção de peers, replicação ou envio automático.
+- `pspeer_service.py`: cada serviço cria seus próprios stores; API local `subscribe`, `publish`, `fetch`, `mark_consumed`. `subscribe_local(subscription, peer_id)` produz delta versionado somente se houve mudança; `apply_sync()` aplica versões novas sem repropagar nem limpar consumo. O adaptador usa essas APIs para sincronização. Chamadas diretas à API local `subscribe()` não emitem SYNC.
 - `pspeer_mixin.py`: `PSPeerMixin.initialize()` chama `super`, cria `self.pspeer_service` e registra INFO com ID e slot. Atributos `is_pspeer=True`, `pspeer_slot`.
 - `transport.py`: `PubSubTransportMixin` sobre `SWCoreMixin`, ativo somente no core com `--pubsub`. `send_pubsub(destination, envelope) -> bool`; `handle_pubsub(envelope, source_id)` é hook de recepção que atualmente só registra DEBUG.
 
 ### Transporte e composição
 
-`src/uav.py` monta o roteamento opt-in como `PubSubAdapterMixin, PubSubTransportMixin, SWCoreMixin`. Nas fábricas, vêm antes deles `NeighborMixin` e `CoreDockMixin`; o protocolo rim inclui `PSPeerMixin` quando selecionado. Atenção à MRO: adicionar `handle_pubsub()` apenas no `PSPeerMixin`, que está depois do transporte, não sobrescreve automaticamente o hook do transporte. Inspecionar o ponto de despacho na etapa 13.
+`src/uav.py` monta o roteamento opt-in como `PubSubAdapterMixin, PubSubTransportMixin, SWCoreMixin`. Nas fábricas, vêm antes deles `NeighborMixin` e `CoreDockMixin`; o protocolo rim inclui `PSPeerMixin` quando selecionado. O adaptador sobrescreve o hook `handle_pubsub()` e usa somente o serviço local do nó; a resolução do hook nas fábricas é testada.
 
 O transporte core usa os beacons/fresh_neighbors existentes e `_send()` do SwCore. Destino vizinho recebe diretamente; caso contrário, vai ao hub conhecido. O hub encaminha para o destino vizinho. Sem próximo salto, retorna False; um intermediário sem rota descarta. Não há discovery extra, retry, buffering Pub/Sub core–core ou confirmação. True significa envio ao próximo salto, **não entrega**. Destino próprio despacha localmente, sem unicast a si mesmo.
 
@@ -80,8 +82,8 @@ Por pedido do usuário, todos os logs detalhados preexistentes da aplicação fo
 | Etapa | Escopo e validação principal |
 | --- | --- |
 | 13 — concluída | Comunicar UAVs e PSPeers: processar SUBSCRIBE/PUBLISH/FETCH pelo adaptador. Cliente conhece apenas o PSPeer escolhido. Testar um UAV assinando, publicando e consultando através do rádio, com logs comprovando o caminho. Não antecipar sincronização. |
-| **14 ? pr?xima** | Sincronizar assinaturas: SYNC após alteração local; peers aplicam, demais cores descartam; sem repropagar, ACK ou retransmitir. ID/versão idempotente. Testar três réplicas e perdas. Resolver alcance multicast antes da implementação. |
-| 15 | Distribuir/replicar publicações entre PSPeers, deduplicar e evitar ciclos, separadamente de assinaturas. Publicar em A e consultar B/C. **Política de replicação ainda precisa ser confirmada**, pois é proposta do roteiro, não exigência inequívoca da especificação. |
+| 14 — concluída | SYNC após alteração local, broadcast de alcance próprio, versões idempotentes, três réplicas e perdas testadas; sem repropagar, ACK ou retransmitir. |
+| **15 — próxima** | Distribuir/replicar publicações entre PSPeers, deduplicar e evitar ciclos, separadamente de assinaturas. Publicar em A e consultar B/C. **Política de replicação ainda precisa ser confirmada**, pois é proposta do roteiro, não exigência inequívoca da especificação. |
 | 16 | Entrega aos assinantes elegíveis via DELIVER/SwCore, destino individual, sem expor assinantes ao publicador. Considerar satélites disponíveis e deduplicação. TF01/02/03. |
 | 17 | Reconexão e consumo incremental: FETCH ao conectar, reutilização de buffers SwCore, distinguir pendente/enviado/recebido. TF06 com IDs exatos e reconexões repetidas. Resolver confirmação/controle distribuído de consumo. |
 | 18 | Identificação única/estável de sensores; par→T2, ímpar→T1, preservando coleta original. Testar/logar ambas as paridades. |
@@ -94,11 +96,11 @@ Por pedido do usuário, todos os logs detalhados preexistentes da aplicação fo
 | 25 | Runner reproduzível com semente/duração/parâmetros e exportação CSV/JSON; repetir sementes e comparar resultados. Métricas definitivas dependem do professor. |
 | 26 | README final, instalação/execução/testes/parâmetros/limitações/métricas, diagrama e responsabilidades; validar ambiente limpo e autonomia da pasta tarefa2. |
 
-Marcos: M2 (lógica local) concluído na 10; M3 assinaturas sincronizadas na 14; M4 rede/reconexão na 17; M5 integração na 22; M6 entrega na 26.
+Marcos: M2 (lógica local) concluído na 10; M3 assinaturas sincronizadas concluído na 14; M4 rede/reconexão na 17; M5 integração na 22; M6 entrega na 26.
 
 ## Questões importantes ainda não resolvidas
 
-- Rádio de 30 m e raio do core de 29,25 m: rims opostos estão a 58,5 m. Um broadcast original não atinge todo o core; a especificação assume alcance suficiente para SYNC sem retransmissão. Não substituir silenciosamente por flooding; definir o mecanismo na 14.
+- Alcance do SYNC resolvido na etapa 14: `radio.py` estende o handler local, usando `PUBSUB_SYNC_RANGE=CORE_DIAMETER+1.0` (59,5 m) exclusivamente para `SyncBroadcastCommand`. Rádio comum continua em 30 m. Preserva perda/atraso do meio; não altera dependência, não usa flooding nem registro global de aplicação. Nós fora do core podem ouvir e ignoram esse tipo de pacote.
 - Semântica de confirmação/consumo: consultas nunca marcam consumo; o estado local existe, mas nenhum mecanismo de rede o confirma. O roteiro alerta para não inventar garantia de entrega. Como manter leitura ao trocar de PSPeer também exige atenção nas etapas de integração.
 - Não estão implementadas validações de pertencimento do tópico a T1/T2 nem validação completa de IDs/tipos nos modelos. O roteiro da etapa 05 menciona validações mais amplas; não afirmar que isso já está coberto. Não corrigir fora do escopo sem necessidade/autorização.
 - Base herdada tem `_SAT_BY_FACE`, `_DOCKED_SATS`, `HUB_SPIN_STATE` e métricas globais. Não usar esses padrões para nova comunicação Pub/Sub. Migração ampla da base não foi autorizada.
@@ -121,7 +123,7 @@ Executar a partir de `tarefa2`:
 ../.venv/Scripts/python.exe -B -m src.main --no-viz --topology star --routing-strategy swcore
 ```
 
-- Último resultado: **90 testes passaram**, incluindo oito de transporte com rádio/timers reais; suíte local: **40 testes**, runner verifica que nenhum módulo `gradysim` foi importado.
+- Último resultado: **99 testes passaram**, incluindo nove novos da etapa 14; suíte local: **45 testes**, runner verifica que nenhum módulo `gradysim` foi importado.
 - Transporte testado com três nós em posições 0/25/50 m, rádio 30 m: origem e destino não têm alcance direto, e a entrega exige dois saltos via hub. Testes incluem envio direto/local, duplicação, ausência de vizinhos, destino desconhecido, TTL e opt-in das fábricas.
 - Validação etapa 12: duas execuções independentes de 300 segundos (com/sem Pub/Sub) tiveram **55 uploads e 53 entregas satélite–satélite**, com os mesmos IDs, instantes de criação/entrega e saltos. Isso valida preservação do tráfego original; não são publicações Pub/Sub.
 - Logs `verification-*.log` e `.cache/` são ignorados. PowerShell pode rotular saída stderr normal do logging/unittest como `NativeCommandError` na redireção: conferir exit code e resultado real antes de diagnosticar falha.
@@ -130,8 +132,8 @@ Executar a partir de `tarefa2`:
 ## Retomada mínima
 
 1. Ler este resumo e verificar `git status --short tarefa2`.
-2. Aguardar/seguir a etapa explicitamente solicitada pelo usuário; a próxima prevista é 14.
-3. Para 14, resolver primeiro o alcance do SYNC; consultar adaptador, transporte, modelos e stores relevantes.
+2. Aguardar/seguir a etapa explicitamente solicitada pelo usuário; a próxima prevista é 15.
+3. Para 15, confirmar a política de replicação de publicações indicada acima; consultar somente os contratos e arquivos relevantes.
 4. Implementar e testar somente a etapa; apresentar resumo curto e parar para revisão/commit.
 
 ## Entrega da etapa 13
@@ -143,3 +145,12 @@ Executar a partir de `tarefa2`:
 - Logs INFO de operações/respostas e DEBUG de saltos. Sete testes novos comprovam ida e volta via hub, filtros, repetição sem consumo, falta de seleção, perda de assinatura, destino não peer e composição das fábricas.
 - Validação: 90 testes passaram; simulação completa `--pubsub --no-viz` chegou a 300 s sem erros. Não repetida a comparação detalhada de tráfego original da etapa 12.
 - Arquivos: novo adaptador, `uav.py`, `transport.py`, `test_pubsub_adapter.py`, README e este resumo. Nenhum commit ou comando de staging executado pelo agente.
+
+## Entrega da etapa 14
+
+- SUBSCRIBE com filtro alterado produz um delta SYNC; repetição idêntica não gera envio. Cada peer tem relógio e versões próprios, sem estado compartilhado entre nós.
+- Ordenação por `(version, sender_id)` rejeita duplicatas e versões antigas por assinatura e resolve empates concorrentes deterministicamente. Não representa ordem cronológica real. SYNC recebido não gera outro SYNC.
+- Broadcast único `pubsub_sync` usa rádio simulado com alcance específico de 59,5 m. O handler local é instalado somente com `--pubsub`; tráfego comum mantém 30 m. Sem ACK, retry ou reparação de perdas: réplicas podem ficar divergentes, inclusive se o cliente repetir um filtro inalterado.
+- Publicações e consumo não são sincronizados. Os limites descritos na entrega da etapa 13 quanto à ausência de sincronização são históricos.
+- Validação: 99 testes gerais e 45 locais passaram (os locais fazem parte dos 99). Nove novos testes cobrem versões, concorrência, consumo preservado, três réplicas via rádio, duplicatas, perdas, alcance e descarte por não peer. Simulação completa com Pub/Sub chegou a 300 s sem erros; os eventos SYNC foram exercitados nos testes dedicados, pois o cenário padrão ainda não gera assinaturas espontâneas.
+- Arquivos: modelos, serviço, adaptador, transporte, novo `radio.py`, `main.py`, configuração, dois novos arquivos de testes, runner local, README e este resumo. Sem início da etapa 15.

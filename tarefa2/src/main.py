@@ -12,6 +12,7 @@ Run with:
 import logging
 import argparse
 import random
+from src.pubsub.radio import PubSubCommunicationHandler
 
 from gradysim.simulator.handler.communication import (
     CommunicationHandler,
@@ -178,7 +179,8 @@ def main() -> None:
     builder.add_handler(TimerHandler())
     builder.add_handler(MobilityHandler())
     builder.add_handler(
-        CommunicationHandler(CommunicationMedium(transmission_range=COMM_RANGE))
+        (PubSubCommunicationHandler if args.pubsub else CommunicationHandler)(
+            CommunicationMedium(transmission_range=COMM_RANGE))
     )
     if viz:
         builder.add_handler(VisualizationHandler(viz_config))

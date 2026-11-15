@@ -7,12 +7,22 @@ Satellite-addressed application delivery is left to the later integration step.
 import json
 import logging
 
-from src.pubsub.models import Envelope, envelope_from_dict
+from src.pubsub.models import Envelope, SyncEnvelope, envelope_from_dict
+from src.pubsub.radio import SyncBroadcastCommand
 from utils.common.config import PUBSUB_TRANSPORT_MAX_HOPS
 
 
 class PubSubTransportMixin:
     transport_msg_type = 'pubsub_core'
+    sync_msg_type = 'pubsub_sync'
+
+    def broadcast_pubsub_sync(self, message: SyncEnvelope) -> None:
+        """Send one core-wide SYNC; receivers never forward this packet."""
+        source = self.provider.get_id()
+        packet = dict(msg_type=self.sync_msg_type, source_id=source, payload=message.to_dict())
+        self.provider.send_communication_command(SyncBroadcastCommand(json.dumps(packet)))
+        logging.info('[PUBSUB sync] node=%s version=%s action=broadcast count=%s',
+                     source, message.version, len(message.subscriptions))
 
     def initialize(self) -> None:
         super().initialize()
@@ -65,6 +75,17 @@ class PubSubTransportMixin:
             packet = json.loads(message)
         except json.JSONDecodeError:
             return super().handle_packet(message)
+        if isinstance(packet, dict) and packet.get('msg_type') == self.sync_msg_type:
+            try:
+                envelope = envelope_from_dict(packet['payload'])
+                source = packet['source_id']
+                if (type(source) is int and source >= 0
+                        and isinstance(envelope, SyncEnvelope)
+                        and envelope.sender_id == source and envelope.version > 0):
+                    self.handle_pubsub(envelope, source)
+            except (KeyError, TypeError, ValueError):
+                logging.debug('Discarding malformed Pub/Sub SYNC packet')
+            return
         if not isinstance(packet, dict) or packet.get('msg_type') != self.transport_msg_type:
             return super().handle_packet(message)
         if packet.get('next_hop') != self.provider.get_id():

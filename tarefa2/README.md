@@ -128,7 +128,7 @@ rim-to-rim delivery, with per-instance transport IDs and duplicate suppression.
 
 The return value indicates local dispatch or submission to the next hop, not
 confirmed delivery. Without a known next hop it returns `False`; no retry or
-queue is added. Satellite-addressed Pub/Sub delivery and synchronization remain
+queue is added. Satellite-addressed Pub/Sub delivery remains
 for subsequent stages. Existing SwCore
 satellite traffic keeps its original routing and buffers.
 
@@ -139,8 +139,30 @@ The adapter processes requests only at PSPeers. FETCH returns eligible history
 over the same radio transport using DELIVER, including an empty result; clients
 receive it through `on_pubsub_delivery(envelope)`. No consumption is marked,
 so repeated queries can return the same IDs. There is no automatic peer choice,
-spontaneous traffic, synchronization or push delivery. Request/response logs are
+spontaneous traffic or push delivery. Request/response logs are
 INFO; per-hop paths are DEBUG. `tests/test_pubsub_adapter.py` exercises this path.
+
+### Subscription synchronization
+
+A changed client subscription triggers one SYNC broadcast containing only that
+delta. PSPeers apply newer versions; other core nodes discard it. Receivers do
+not forward or acknowledge it, and identical subscriptions cause no new send.
+Per-subscription ordering uses `(Lamport version, sender ID)` to reject duplicates
+and delayed older updates and break concurrent ties deterministically. It does
+not establish wall-clock recency. Version zero is legacy data and is not applied.
+
+In Pub/Sub mode, the local `PubSubCommunicationHandler` uses
+`PUBSUB_SYNC_RANGE = CORE_DIAMETER + 1.0` (59.5 m) only for SYNC broadcasts,
+implementing the specification's core-wide radio assumption. Ordinary traffic
+retains `COMM_RANGE = 30.0`; configured radio loss and delay still apply to SYNC.
+The installed simulator is unchanged. Broadcasts may physically reach nearby
+non-core nodes, which ignore this message type. No global application registry
+or hub relay participates in synchronization.
+
+Lost updates leave replicas stale: there is no retry or repair, including when
+the same client filter is submitted again unchanged. Publications and consumption
+are not synchronized. `test_subscription_sync.py` and `test_pubsub_sync_radio.py`
+cover ordering, three replicas, duplicate packets, losses and radio isolation.
 
 ### Logging
 

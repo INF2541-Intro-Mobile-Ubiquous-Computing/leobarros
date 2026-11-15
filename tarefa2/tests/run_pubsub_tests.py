@@ -8,6 +8,7 @@ TESTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(TESTS.parent))
 
 MODEL_TESTS = (
+    'test_subscription_sync.py',
     'test_pubsub_models.py',
     'test_topic_store.py',
     'test_subscription_store.py',

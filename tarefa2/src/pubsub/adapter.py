@@ -1,9 +1,9 @@
-"""Core UAV client and PSPeer request adapter; no replication or receipt ACK."""
+"""Core UAV requests and subscription synchronization; no receipt ACK."""
 import logging
 
 from src.pubsub.models import (
     DeliverEnvelope, FetchEnvelope, Publication, PublishEnvelope,
-    SubscribeEnvelope, Subscription,
+    SubscribeEnvelope, Subscription, SyncEnvelope,
 )
 
 
@@ -54,7 +54,14 @@ class PubSubAdapterMixin:
         if isinstance(message, SubscribeEnvelope):
             if message.subscription.subscriber_id != source_id:
                 return
-            service.subscribe(message.subscription)
+            delta = service.subscribe_local(message.subscription, node)
+            if delta is not None:
+                self.broadcast_pubsub_sync(delta)
+        elif isinstance(message, SyncEnvelope):
+            applied = service.apply_sync(message)
+            logging.info('[PUBSUB sync] node=%s source=%s version=%s applied=%s',
+                         node, source_id, message.version, applied)
+            return
         elif isinstance(message, PublishEnvelope):
             if message.publication.origin_id != source_id:
                 return
@@ -67,7 +74,7 @@ class PubSubAdapterMixin:
             logging.info('[PUBSUB peer] node=%s client=%s response=DELIVER count=%s submitted=%s',
                          node, source_id, len(publications), submitted)
         else:
-            return  # SYNC belongs to a later stage.
+            return
         logging.info('[PUBSUB peer] node=%s client=%s operation=%s',
                      node, source_id, message.operation.value)
 
