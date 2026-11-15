@@ -103,6 +103,16 @@ RANDOM_X_RANGE = (OBSTACLE_ZONE.x_min, OBSTACLE_ZONE.x_max)
 RANDOM_Y_RANGE = (OBSTACLE_ZONE.y_min, OBSTACLE_ZONE.y_max)
 
 # ---------------------------------------------------------------------------
+# Pub/Sub opt-in configuration (event generation is not implemented yet)
+# ---------------------------------------------------------------------------
+PUBSUB_ENABLED = False             # default; --pubsub enables it for one run
+PUBSUB_TOPICS = ("T1", "T2")
+PSPEER_SLOTS = (0, 3, 6)            # rim indices, NOT simulator node IDs
+PUBSUB_SEED = 2056                 # reserved for per-instance Pub/Sub RNGs
+PUBSUB_PUBLICATION_INTERVAL = 5.0   # simulated seconds
+PUBSUB_SUBSCRIPTION_INTERVAL = 5.0  # simulated seconds
+
+# ---------------------------------------------------------------------------
 # Routing Protocol Parameters
 # ---------------------------------------------------------------------------
 DTN_SESSION_COOLDOWN = 3.0          # seconds between epidemic sessions

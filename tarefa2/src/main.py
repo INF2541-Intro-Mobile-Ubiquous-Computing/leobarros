@@ -7,6 +7,7 @@ Run with:
     python -m src.main --routing-strategy geocasting
     python -m src.main --force-regen
     python -m src.main --topology star
+    python -m src.main --pubsub --no-viz
 """
 import logging
 import argparse
@@ -37,6 +38,7 @@ from utils.common.config import (
     NUM_UAVS,
     NUM_RANDOM_UAVS,
     RANDOM_SEED,
+    PUBSUB_ENABLED,
     random_uav_starts,
     SAT_OUTER_DIST,
     SENSOR_FIELD_X,
@@ -49,7 +51,8 @@ from src.sensor import Sensor
 from src.uav import make_core_hub, make_core_rim, make_random_uav, make_satellite
 
 
-def main() -> None:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """Resolve CLI options without changing shared configuration values."""
     parser = argparse.ArgumentParser(description="GrADySim core+satellite UAV simulation")
     parser.add_argument(
         "--no-viz",
@@ -78,7 +81,24 @@ def main() -> None:
             "star: rotating hub + 8 rim formation"
         ),
     )
-    args = parser.parse_args()
+    parser.add_argument(
+        "--pubsub",
+        action="store_true",
+        default=PUBSUB_ENABLED,
+        help=(
+            "enable Pub/Sub configuration; overrides --topology with star and "
+            "--routing-strategy with swcore (Pub/Sub events are not implemented yet)"
+        ),
+    )
+    args = parser.parse_args(argv)
+    if args.pubsub:
+        args.topology = "star"
+        args.routing_strategy = "swcore"
+    return args
+
+
+def main() -> None:
+    args = parse_args()
     random.seed(RANDOM_SEED)
 
     # ── Simulation config ──────────────────────────────────────────────────
@@ -95,6 +115,8 @@ def main() -> None:
                      f"({NUM_RANDOM_UAVS} random + {len(FACE_NAMES)} satellites)")
     logging.info(f"Topology:          {args.topology}")
     logging.info(f"Routing strategy:  {args.routing_strategy}")
+    if args.pubsub:
+        logging.info("Pub/Sub configuration enabled: star + swcore; event generation not implemented yet.")
 
     viz = not args.no_viz
 

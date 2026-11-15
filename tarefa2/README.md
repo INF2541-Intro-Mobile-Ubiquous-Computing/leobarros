@@ -84,7 +84,35 @@ Derived values logged at startup:
 - Tangential speed ≈ 3.08 m/s (star)
 - Alignment period = 7.5 s (star)
 
-## Setup
+## Pub/Sub configuration in tarefa2
+
+Run from `tarefa2`:
+
+```bash
+python -m src.main --pubsub --no-viz
+```
+
+`--pubsub` forces `--topology star` and `--routing-strategy swcore`, including
+when conflicting values are explicitly supplied. Without Pub/Sub activation,
+the original defaults and explicit CLI selections are preserved.
+
+All new parameters live in `utils/common/config.py`:
+
+| Parameter | Default | Meaning |
+|---|---|---|
+| `PUBSUB_ENABLED` | `False` | Default activation; the CLI flag enables this run without mutating the module |
+| `PUBSUB_TOPICS` | `("T1", "T2")` | Topic names reserved for the future Pub/Sub layer |
+| `PSPEER_SLOTS` | `(0, 3, 6)` | Rim slots, not simulator IDs; gaps of 3, 3 and 2 slots around the eight-node rim |
+| `PUBSUB_SEED` | `2056` | Seed reserved for future per-instance Pub/Sub random generators |
+| `PUBSUB_PUBLICATION_INTERVAL` | `5.0` | Future publication event interval in simulated seconds |
+| `PUBSUB_SUBSCRIPTION_INTERVAL` | `5.0` | Future subscription event interval in simulated seconds |
+
+This stage only configures the mode and selects the existing star/SwCore
+simulation. It does not create PSPeers, topics, subscriptions or event timers.
+The original mobility and sensor seeds remain unchanged. Setting
+`PUBSUB_ENABLED=True` enables the same selection without the CLI flag.
+
+## Environment setup
 
 ```bash
 python -m venv venv
