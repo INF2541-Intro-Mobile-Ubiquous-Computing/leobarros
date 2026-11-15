@@ -304,6 +304,18 @@ python -m src.main --no-viz --topology random --routing-strategy dtn
 
 ## Sensors
 
+Each `SENSOR_POSITIONS` key (`sensor_N`) defines a stable nonnegative logical ID
+`N`, bound by `make_sensor(name)` independently of simulator node order. Sensor
+packets retain their `{sensor_name: count}` structure and add `sensor_id`; the
+existing `sender_id` still identifies the radio node. The old node-ID-minus-one
+offset is removed. Direct users of the bare template fall back to the node ID.
+
+`topic_for_sensor(id)` selects even IDs → T2 and odd IDs → T1 through
+`SENSOR_TOPIC_BY_PARITY` in `config.py`. Identity/topic mappings appear in DEBUG
+logs. Counts, generation intervals, TTL and satellite accumulation are unchanged.
+Stage 18 only defines identity and topic selection; conversion of sensor data
+into Pub/Sub publications is deferred to stage 19.
+
 Sensors are placed in a **cross-shaped corridor** covering both cardinal axes:
 - `|x| ≤ 25 m` (N-S corridor) OR `|y| ≤ 25 m` (E-W corridor)
 - Outside the obstacle zone, within 90 m of center

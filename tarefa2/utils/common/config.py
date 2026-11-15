@@ -111,6 +111,7 @@ RANDOM_Y_RANGE = (OBSTACLE_ZONE.y_min, OBSTACLE_ZONE.y_max)
 # ---------------------------------------------------------------------------
 PUBSUB_ENABLED = False             # default; --pubsub enables it for one run
 PUBSUB_TOPICS = ("T1", "T2")
+SENSOR_TOPIC_BY_PARITY = (PUBSUB_TOPICS[1], PUBSUB_TOPICS[0])  # even -> T2; odd -> T1
 PSPEER_SLOTS = (0, 3, 6)            # rim indices, NOT simulator node IDs
 PSPEER_COLOR = (0, 200, 100)        # RGB, distinct from ordinary rim nodes
 PUBSUB_SEED = 2056                 # reserved for per-instance Pub/Sub RNGs

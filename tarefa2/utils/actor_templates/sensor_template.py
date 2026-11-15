@@ -16,6 +16,7 @@ from utils.common.agent_types import AgentType
 from utils.common.message_schemas import SimpleMessage
 from utils.common.lamport import LamportClock
 from utils.metrics.stats import SENSOR_STATS
+from utils.common.sensor_identity import topic_for_sensor
 
 class SensorProtocol(IProtocol):
     """
@@ -53,6 +54,7 @@ class SensorProtocol(IProtocol):
     total_expired:       int
     _sensor_name:        str
     _batch_start_lamport: int
+    sensor_id: int | None = None  # main binds the stable SENSOR_POSITIONS identity
 
     def initialize(self) -> None:
         self._lamport = LamportClock()
@@ -61,10 +63,13 @@ class SensorProtocol(IProtocol):
         self.total_expired       = 0
         self._batch_start_lamport = 0
 
-        # Derive a stable name from the node ID at runtime.
-        # The simulator assigns IDs in add_node order; sensors are added after
-        # base (id=0) and e-station (id=1), so sensor_N gets id = N+1.
-        self._sensor_name = f"sensor_{self.provider.get_id() - 1}"
+        # Direct template users default to their node ID, without the old offset.
+        if self.sensor_id is None:
+            self.sensor_id = self.provider.get_id()
+        self.sensor_topic = topic_for_sensor(self.sensor_id)
+        self._sensor_name = f"sensor_{self.sensor_id}"
+        logging.debug('[SENSOR identity] node=%s sensor_id=%s name=%s topic=%s',
+                      self.provider.get_id(), self.sensor_id, self._sensor_name, self.sensor_topic)
         self._schedule_packet()
 
     def _schedule_packet(self) -> None:
@@ -117,6 +122,7 @@ class SensorProtocol(IProtocol):
                 "packets":     {self._sensor_name: self.packet_count},
                 "sender_type": AgentType.SENSOR.value,
                 "sender_id":   self.provider.get_id(),
+                "sensor_id":   self.sensor_id,
             }
             self.provider.send_communication_command(
                 SendMessageCommand(json.dumps(response), msg["sender_id"])

@@ -113,7 +113,7 @@ class ArchitectureContractsTests(unittest.TestCase):
         self.assertEqual(self.sent()[0][1]['msg_type'], 'dock_deliver')
         self.assertNotIn(entry['id'], self.core._core_buffer)
 
-    def test_first_sensor_payload_name_is_offset_from_node_id(self):
+    def test_first_sensor_payload_has_nonnegative_identity_without_offset(self):
         sensor = SensorProtocol()
         sensor.provider = Mock()
         sensor.provider.get_id.return_value = 0
@@ -124,7 +124,8 @@ class ArchitectureContractsTests(unittest.TestCase):
         command = sensor.provider.send_communication_command.call_args.args[0]
         raw = json.loads(command.message)
         self.assertEqual(raw['sender_id'], 0)
-        self.assertEqual(raw['packets'], {'sensor_-1': 1})
+        self.assertEqual(raw['packets'], {'sensor_0': 1})
+        self.assertEqual(raw['sensor_id'], 0)
 
     def test_satellite_connects_on_first_ack_and_disconnects_on_timeout(self):
         satellite = make_satellite_protocol('N', swcore=True)()

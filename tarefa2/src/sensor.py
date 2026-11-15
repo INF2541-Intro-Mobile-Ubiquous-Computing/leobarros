@@ -1,5 +1,6 @@
 from utils.actor_templates.sensor_template import SensorProtocol
 from utils.viz_templates.sensor_viz_template import SensorVizMixin
+from utils.common.sensor_identity import sensor_id_from_name
 
 class Sensor(SensorVizMixin, SensorProtocol):
     """
@@ -10,3 +11,14 @@ class Sensor(SensorVizMixin, SensorProtocol):
     behaviors you want.
     """
     pass
+
+
+def make_sensor(name: str) -> type:
+    """Bind the configured logical ID independently of simulator node order."""
+    logical_id = sensor_id_from_name(name)
+
+    class NamedSensor(Sensor):
+        sensor_id = logical_id
+
+    NamedSensor.__name__ = f'Sensor_{logical_id}'
+    return NamedSensor

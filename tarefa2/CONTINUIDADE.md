@@ -1,6 +1,6 @@
 ﻿# Continuidade do projeto Tarefa 2
 
-Atualizado em 15/11/2026, após implementar a etapa 17. Leia este arquivo primeiro na nova conversa; depois, apenas os trechos de código relevantes à etapa autorizada. Este resumo não autoriza iniciar outra etapa automaticamente.
+Atualizado em 15/11/2026, após implementar a etapa 18. Leia este arquivo primeiro na nova conversa; depois, apenas os trechos de código relevantes à etapa autorizada. Este resumo não autoriza iniciar outra etapa automaticamente.
 
 ## Regras do usuário e modo econômico
 
@@ -31,9 +31,9 @@ Atualizado em 15/11/2026, após implementar a etapa 17. Leia este arquivo primei
 
 ## Estado atual e revisão pendente
 
-**Etapas 01–17 implementadas e testadas. Próxima: 18, somente após solicitação do usuário.** Os PSPeers sincronizam assinaturas, replicam publicações e enviam DELIVER individual aos assinantes elegíveis. Satélites conectados têm cliente Pub/Sub opt-in. Não há geração espontânea de publicações/assinaturas.
+**Etapas 01–18 implementadas e testadas. Próxima: 19, somente após solicitação do usuário.** Os PSPeers sincronizam assinaturas, replicam publicações e enviam DELIVER individual aos assinantes elegíveis. Satélites conectados têm cliente Pub/Sub opt-in. Não há geração espontânea de publicações/assinaturas.
 
-Na entrada da etapa 17, `git status --short tarefa2` estava limpo. As mudanças desta etapa ficam para revisão e commit do usuário; nenhum comando de staging ou commit foi executado pelo agente.
+Na entrada da etapa 18, `git status --short tarefa2` estava limpo. As mudanças desta etapa ficam para revisão e commit do usuário; nenhum comando de staging ou commit foi executado pelo agente.
 
 | Etapas concluídas | Resultado |
 | --- | --- |
@@ -88,8 +88,8 @@ Por pedido do usuário, todos os logs detalhados preexistentes da aplicação fo
 | 15 — concluída | Política confirmada pelo usuário: armazenar e emitir um broadcast REPLICATE para cada publicação nova; receptores deduplicam e não repropagam. Sem ACK/retry, admitindo históricos divergentes por perdas. |
 | 16 — concluída | DELIVER individual aos assinantes elegíveis, responsabilidade pelo peer da versão da assinatura, cliente de satélite conectado, deduplicação de push. TF01/02/03 testados. |
 | 17 — concluída | Reconexão e consumo incremental: FETCH ao conectar, reutilização de buffers SwCore, distinguir pendente/enviado/recebido. TF06 com IDs exatos e reconexões repetidas. Resolver confirmação/controle distribuído de consumo e troca de peer. |
-| **18 — próxima** | Identificação única/estável de sensores; par→T2, ímpar→T1, preservando coleta original. Testar/logar ambas as paridades. |
-| 19 | Converter coleta dos satélites em publicações reais por tópico/paridade e região N/S/E/W; armazenar durante afastamento e transmitir no contato. |
+| 18 — concluída | Identificação única/estável de sensores; par→T2, ímpar→T1, preservando coleta original. Testar/logar ambas as paridades. |
+| **19 — próxima** | Converter coleta dos satélites em publicações reais por tópico/paridade e região N/S/E/W; armazenar durante afastamento e transmitir no contato. |
 | 20 | Timers de publicações aleatórias do core em T1/T2, região C, semente reproduzível; entrega conforme filtro. TF04. |
 | 21 | Assinaturas dinâmicas de core/satélites, tópico e subconjunto de regiões por semente; satélites enviam no contato; permitir ambos os tópicos. Histórico elegível e TF05. |
 | 22 | Cenário integrado com três peers, eventos dinâmicos, filtros, sincronização, histórico e reconexão. Logs estruturados. Executar ciclo relevante de todos os satélites. |
@@ -106,7 +106,7 @@ Marcos: M2 (lógica local) concluído na 10; M3 assinaturas sincronizadas conclu
 - Confirmação/consumo resolvido na etapa 17 por IDs recebidos mantidos no cliente e reportados em FETCH. Não há ACK separado nem réplica global instantânea de consumo; detalhes e limites na entrega da etapa 17 abaixo.
 - Não estão implementadas validações de pertencimento do tópico a T1/T2 nem validação completa de IDs/tipos nos modelos. O roteiro da etapa 05 menciona validações mais amplas; não afirmar que isso já está coberto. Não corrigir fora do escopo sem necessidade/autorização.
 - Base herdada tem `_SAT_BY_FACE`, `_DOCKED_SATS`, `HUB_SPIN_STATE` e métricas globais. Não usar esses padrões para nova comunicação Pub/Sub. Migração ampla da base não foi autorizada.
-- Nome do sensor no payload é `sensor_{node_id - 1}`; sensores são adicionados primeiro, portanto nó 0 vira `sensor_-1`. Corrigir identidade na 18; não confundir com chaves de `SENSOR_POSITIONS`.
+- Identidade corrigida na etapa 18: main usa o número da chave sensor_N de SENSOR_POSITIONS como ID lógico explícito. sender_id continua sendo o ID do rádio. Não existe mais o deslocamento node_id - 1.
 - Satélites atuais começam no dock e viajam para fora; a especificação pede início afastado. Não foi corrigido; acompanhar ao integrar mobilidade sem reescrever o protocolo.
 - `CoreDockMixin.route_in_core` vazio sombreia métodos posteriores; entrada real do SwCore é `on_dock_upload`.
 - `deliver_on_alignment=False` não bloqueia `_try_deliver`, que pode entregar por face sem consultar `_rt`. Documentado, não corrigido.
@@ -125,7 +125,7 @@ Executar a partir de `tarefa2`:
 ../.venv/Scripts/python.exe -B -m src.main --no-viz --topology star --routing-strategy swcore
 ```
 
-- Último resultado: **121 testes passaram**, incluindo nove novos da etapa 17; suíte local: **48 testes**, runner verifica que nenhum módulo `gradysim` foi importado.
+- Último resultado: **126 testes passaram**, incluindo cinco novos da etapa 18; suíte local: **48 testes**, runner verifica que nenhum módulo `gradysim` foi importado.
 - Transporte testado com três nós em posições 0/25/50 m, rádio 30 m: origem e destino não têm alcance direto, e a entrega exige dois saltos via hub. Testes incluem envio direto/local, duplicação, ausência de vizinhos, destino desconhecido, TTL e opt-in das fábricas.
 - Validação etapa 12: duas execuções independentes de 300 segundos (com/sem Pub/Sub) tiveram **55 uploads e 53 entregas satélite–satélite**, com os mesmos IDs, instantes de criação/entrega e saltos. Isso valida preservação do tráfego original; não são publicações Pub/Sub.
 - Logs `verification-*.log` e `.cache/` são ignorados. PowerShell pode rotular saída stderr normal do logging/unittest como `NativeCommandError` na redireção: conferir exit code e resultado real antes de diagnosticar falha.
@@ -134,8 +134,8 @@ Executar a partir de `tarefa2`:
 ## Retomada mínima
 
 1. Ler este resumo e verificar `git status --short tarefa2`.
-2. Aguardar/seguir a etapa explicitamente solicitada pelo usuário; a próxima prevista é 18.
-3. Para 18, consultar identidade de sensores e coleta atual; corrigir IDs únicos/estáveis e validar paridade sem antecipar a conversão em publicações da etapa 19.
+2. Aguardar/seguir a etapa explicitamente solicitada pelo usuário; a próxima prevista é 19.
+3. Para 19, consultar coleta em satellite.py, sensor_identity.py, modelos e cliente Pub/Sub; converter dados coletados em publicações por tópico/paridade e região, sem alterar o tráfego original.
 4. Implementar e testar somente a etapa; apresentar resumo curto e parar para revisão/commit.
 
 ## Entrega da etapa 13
@@ -191,3 +191,12 @@ Esta seção substitui as limitações históricas das etapas anteriores quanto 
 - Testes antigos foram adaptados ao consumo incremental. Testes de replicação continuam consultando o histórico bruto por envelopes sem relatório de recebimento, isolando replicação do comportamento incremental do cliente.
 - Simulação padrão `--pubsub --no-viz` concluiu 300 s sem erros. Eventos Pub/Sub/reconexão foram exercitados nos testes dedicados; ainda não há geração espontânea no cenário padrão. Comparação detalhada de métricas originais da etapa 12 não foi repetida.
 - Arquivos: modelos, consumo, serviço, adaptador, transporte, cliente de satélite, novo `test_pubsub_reconnection.py`, testes existentes pertinentes, README e continuidade. Sem commit/staging ou início da etapa 18.
+
+## Entrega da etapa 18
+
+- `make_sensor(name)` vincula cada classe ao ID lógico não negativo extraído da chave canônica `sensor_N` de `SENSOR_POSITIONS`. A ordem dos nós e o ID de rádio não mudam essa identidade. Nomes ambíguos como sensor_01 e IDs negativos são rejeitados. O layout mantém IDs únicos por suas chaves; estabilidade refere-se ao mesmo layout, não a uma associação entre posições físicas de layouts regenerados.
+- `SensorProtocol` usa esse ID no nome do payload e nas métricas; usuários diretos do template sem ID configurado usam o próprio ID do nó, sem deslocamento. Pacote conserva packets={sensor_N: contagem} e sender_id de rádio, acrescentando sensor_id lógico. Coleta, contagens, temporizadores e TTL permanecem iguais.
+- `topic_for_sensor(id)` usa `SENSOR_TOPIC_BY_PARITY=(T2,T1)` centralizado em config.py. Sensor guarda sensor_topic e registra identidade/tópico em DEBUG. Não gera publicações Pub/Sub nesta etapa.
+- Validação: 126 testes passaram, incluindo cinco novos de identidade, paridade, validação de nomes, binding do main com ordem invertida e coleta real pelo rádio. O teste antigo que esperava sensor_-1 foi corrigido. Testes verificam logs das duas paridades e preservação das contagens; o runner local permanece com 48 testes (não foi necessário repeti-lo nesta etapa).
+- Arquivos: fábrica de sensores, main, template de sensor, esquema de mensagem, configuração, novo sensor_identity.py, novo test_sensor_identity.py, contrato de arquitetura, README e continuidade. Sem commit/staging e sem antecipar a etapa 19.
+- Simulação completa `--pubsub --no-viz` concluiu 300 s sem erros. Não foi repetida a comparação detalhada de métricas da etapa 12.

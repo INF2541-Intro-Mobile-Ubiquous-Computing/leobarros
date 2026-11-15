@@ -50,7 +50,7 @@ from utils.common.config import (
     _log_derived,
 )
 
-from src.sensor import Sensor
+from src.sensor import make_sensor
 from utils.common.logging_config import configure_logging
 from src.uav import make_core_hub, make_core_rim, make_random_uav, make_satellite
 
@@ -131,8 +131,8 @@ def main() -> None:
     viz = not args.no_viz
 
     # ── Sensors (static nodes) ─────────────────────────────────────────────
-    for sensor_pos in SENSOR_POSITIONS.values():
-        builder.add_node(Sensor, sensor_pos)
+    for sensor_name, sensor_pos in SENSOR_POSITIONS.items():
+        builder.add_node(make_sensor(sensor_name), sensor_pos)
 
     if args.topology == "star":
         # ── Core hub ───────────────────────────────────────────────────────
