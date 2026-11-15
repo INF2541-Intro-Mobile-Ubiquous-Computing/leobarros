@@ -39,6 +39,7 @@ from utils.common.config import (
     NUM_RANDOM_UAVS,
     RANDOM_SEED,
     PUBSUB_ENABLED,
+    PSPEER_SLOTS,
     LOG_LEVEL,
     random_uav_starts,
     SAT_OUTER_DIST,
@@ -94,6 +95,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     args = parser.parse_args(argv)
     if args.pubsub:
+        if (len(PSPEER_SLOTS) != 3
+                or any(type(slot) is not int or not 0 <= slot < CORE_RIM_NODES
+                       for slot in PSPEER_SLOTS)
+                or len(set(PSPEER_SLOTS)) != 3):
+            parser.error("PSPEER_SLOTS must contain exactly three distinct valid rim indices")
         args.topology = "star"
         args.routing_strategy = "swcore"
     return args
@@ -135,7 +141,8 @@ def main() -> None:
 
         # ── Core rim nodes 0..7 ────────────────────────────────────────────
         for k in range(CORE_RIM_NODES):
-            RimClass = make_core_rim(k=k, routing=args.routing_strategy, viz=viz)
+            RimClass = make_core_rim(k=k, routing=args.routing_strategy, viz=viz,
+                                    pspeer=args.pubsub and k in PSPEER_SLOTS)
             logging.debug(f"Rim{k} start: {CORE_RIM_STARTS[k]}")
             builder.add_node(RimClass, CORE_RIM_STARTS[k])
     else:

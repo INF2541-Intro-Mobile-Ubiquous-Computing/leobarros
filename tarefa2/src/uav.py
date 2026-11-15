@@ -26,6 +26,8 @@ from src.flooding_mixin import FloodingMixin
 from src.dtn_mixin import DTNMixin
 from src.geocasting_mixin import GeocastingMixin
 from src.swcore_mixin import SWCoreMixin
+from src.pubsub.pspeer_mixin import PSPeerMixin
+from utils.common.config import PSPEER_COLOR
 
 
 _ROUTING_MIXINS = {
@@ -63,16 +65,21 @@ class HubVizMixin:
 
 
 class RimVizMixin:
+    def _paint_rim(self) -> None:
+        color = PSPEER_COLOR if getattr(self, "is_pspeer", False) else COLOR_CORE_RIM
+        self._vc.paint_node(self.provider.get_id(), color)
+
     def initialize(self) -> None:
         super().initialize()
         self._vc = VisualizationController(self)
         self._vc.resize_nodes(VIZ_NODE_SIZE)
+        self._paint_rim()
         self.provider.schedule_timer("rim_repaint", self.provider.current_time() + 1)
 
     def handle_timer(self, timer: str) -> None:
         super().handle_timer(timer)
         if timer == "rim_repaint":
-            self._vc.paint_node(self.provider.get_id(), COLOR_CORE_RIM)
+            self._paint_rim()
             self.provider.schedule_timer("rim_repaint", self.provider.current_time() + 1)
 
 
@@ -115,7 +122,8 @@ def make_core_hub(routing: str = "flooding", viz: bool = False) -> type:
     return _Hub
 
 
-def make_core_rim(k: int, routing: str = "flooding", viz: bool = False) -> type:
+def make_core_rim(k: int, routing: str = "flooding", viz: bool = False,
+                  pspeer: bool = False) -> type:
     """
     Return a rim (follower) protocol class for slot k.
 
@@ -124,6 +132,10 @@ def make_core_rim(k: int, routing: str = "flooding", viz: bool = False) -> type:
     """
     RoutingMixin = _routing_mixin(routing)
     BaseRim = make_core_rim_protocol(k)
+    if pspeer:
+        class PeerRim(PSPeerMixin, BaseRim):
+            pspeer_slot = k
+        BaseRim = PeerRim
 
     if viz:
         class _RimViz(RimVizMixin, NeighborMixin, CoreDockMixin, RoutingMixin, BaseRim):

@@ -107,8 +107,11 @@ All new parameters live in `utils/common/config.py`:
 | `PUBSUB_PUBLICATION_INTERVAL` | `5.0` | Future publication event interval in simulated seconds |
 | `PUBSUB_SUBSCRIPTION_INTERVAL` | `5.0` | Future subscription event interval in simulated seconds |
 
-This stage only configures the mode and selects the existing star/SwCore
-simulation. It does not create PSPeers, topics, subscriptions or event timers.
+The mode selects star/SwCore and hosts an independent local `PSPeerService`
+on each rim selected by `PSPEER_SLOTS` (default: 0, 3, 6). Each peer logs its
+node ID and slot at INFO and uses `PSPEER_COLOR` (green) in the visualization.
+Exactly three distinct valid rim slots are required. Network requests,
+synchronization and publication/subscription event timers are not implemented yet.
 The original mobility and sensor seeds remain unchanged. Setting
 `PUBSUB_ENABLED=True` enables the same selection without the CLI flag.
 
