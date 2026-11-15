@@ -68,12 +68,13 @@ class PubSubAdapterTests(unittest.TestCase):
         self.logs = output.getvalue()
         return [simulation.get_node(n).protocol_encapsulator.protocol for n in range(3)]
 
-    def test_requests_and_repeated_fetch_reply_via_hub_without_consumption(self):
+    def test_received_push_is_reported_on_fetch_and_not_returned_again(self):
         client, hub, peer = self.run_network()
         self.assertTrue(all(client.results))
         self.assertEqual([[p.message_id for p in m.publications] for m in client.deliveries],
-                         [['eligible'], ['eligible']])
-        self.assertEqual([p.message_id for p in peer.pspeer_service.fetch(0, 'T1')], ['eligible'])
+                         [[], []])
+        self.assertEqual(client._received_ids, {'T1': {'eligible'}})
+        self.assertEqual(peer.pspeer_service.fetch(0, 'T1'), ())
         self.assertEqual(hub.deliveries, [])
         self.assertEqual(len(hub.transmissions), 8)  # includes one live push
         for operation in ('SUBSCRIBE', 'PUBLISH', 'FETCH', 'DELIVER'):

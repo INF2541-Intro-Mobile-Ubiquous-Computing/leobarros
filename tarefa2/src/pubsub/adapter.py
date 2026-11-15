@@ -13,13 +13,23 @@ class PubSubAdapterMixin:
         super().initialize()
         self.selected_pspeer = None
         self._client_subscriptions = {}
-        self._received_push_ids = set()
+        self._received_ids = {}  # per topic; retained across reconnects and peer changes
 
     def select_pspeer(self, node_id: int) -> None:
         """Choose one peer by simulator ID; no discovery or shared registry."""
         if type(node_id) is not int or node_id < 0:
             raise ValueError('PSPeer must be a nonnegative node ID')
+        changed = self.selected_pspeer != node_id
         self.selected_pspeer = node_id
+        if changed and self._client_subscriptions:
+            self.resume_pubsub()
+
+    def resume_pubsub(self) -> None:
+        """Rebind known subscriptions then request only unreceived history."""
+        node = self.provider.get_id()
+        for topic, subscription in self._client_subscriptions.items():
+            self._send_request(SubscribeEnvelope(node, subscription))
+            self.fetch_pubsub(topic)
 
     def _send_request(self, message) -> bool:
         if self.selected_pspeer is None:
@@ -40,7 +50,8 @@ class PubSubAdapterMixin:
 
     def fetch_pubsub(self, topic: str) -> bool:
         node = self.provider.get_id()
-        return self._send_request(FetchEnvelope(node, node, topic))
+        return self._send_request(FetchEnvelope(
+            node, node, topic, tuple(sorted(self._received_ids.get(topic, set())))))
 
     def handle_pubsub(self, message, source_id: int) -> None:
         node = self.provider.get_id()
@@ -48,20 +59,24 @@ class PubSubAdapterMixin:
             return
         if isinstance(message, DeliverEnvelope):
             if source_id == self.selected_pspeer and message.subscriber_id == node:
-                if message.is_push:
-                    publications = []
-                    for publication in message.publications:
-                        sub = self._client_subscriptions.get(publication.topic)
-                        if (sub is not None and matches(sub, publication)
-                                and publication.message_id not in self._received_push_ids):
-                            self._received_push_ids.add(publication.message_id)
-                            publications.append(publication)
-                    if not publications:
-                        return
-                    message = DeliverEnvelope(source_id, node, tuple(publications), is_push=True)
+                publications = []
+                batch_ids = set()
+                for publication in message.publications:
+                    sub = self._client_subscriptions.get(publication.topic)
+                    if (sub is not None and matches(sub, publication)
+                            and publication.message_id not in self._received_ids.get(publication.topic, set())
+                            and publication.message_id not in batch_ids):
+                        batch_ids.add(publication.message_id)
+                        publications.append(publication)
+                if message.is_push and not publications:
+                    return
+                message = DeliverEnvelope(source_id, node, tuple(publications), message.is_push)
                 logging.info('[PUBSUB client] node=%s peer=%s operation=DELIVER count=%s',
                              node, source_id, len(message.publications))
                 self.on_pubsub_delivery(message)
+                # Only successful application receipt enters the client ledger.
+                for publication in publications:
+                    self._received_ids.setdefault(publication.topic, set()).add(publication.message_id)
             return
         service = getattr(self, 'pspeer_service', None)
         if service is None:
@@ -93,6 +108,7 @@ class PubSubAdapterMixin:
         elif isinstance(message, FetchEnvelope):
             if message.subscriber_id != source_id:
                 return
+            service.report_received(source_id, message.topic, message.received_ids)
             publications = service.fetch(source_id, message.topic)
             submitted = self.send_pubsub(source_id, DeliverEnvelope(node, source_id, publications))
             logging.info('[PUBSUB peer] node=%s client=%s response=DELIVER count=%s submitted=%s',
@@ -113,5 +129,6 @@ class PubSubAdapterMixin:
     def on_pubsub_delivery(self, message: DeliverEnvelope) -> None:
         """Client callback for deduplicated push or FETCH results (including empty).
 
-        Receipt does not mark consumption. Repeated FETCH may return the same IDs.
+        Successful return records receipt locally. The next FETCH reports these
+        IDs to its peer; no send or buffer removal confirms consumption.
         """

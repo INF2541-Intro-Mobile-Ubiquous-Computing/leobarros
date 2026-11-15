@@ -6,6 +6,28 @@ from src.pubsub.pspeer_service import PSPeerService
 
 
 class SubscriptionSyncTests(unittest.TestCase):
+    def test_rebinding_same_filter_emits_new_owner_version_once(self):
+        a, b = PSPeerService(), PSPeerService()
+        sub = Subscription(9, 'T1', {'N'})
+        b.apply_sync(a.subscribe_local(sub, 1))
+        moved = b.subscribe_local(sub, 2)
+        self.assertEqual((moved.version, moved.sender_id), (2, 2))
+        self.assertIsNone(b.subscribe_local(sub, 2))
+        a.apply_sync(moved)
+        item = Publication('p', 'T1', 0, 'N', 0, {})
+        self.assertEqual(a.delivery_subscribers(item, 1), ())
+        self.assertEqual(b.delivery_subscribers(item, 2), (9,))
+
+    def test_receipt_report_before_publication_survives_replica_and_filter_change(self):
+        peer = PSPeerService()
+        peer.report_received(9, 'T1', ('late',))
+        peer.subscribe_local(Subscription(9, 'T1', {'N'}), 1)
+        peer.publish(Publication('late', 'T1', 0, 'N', 0, {}))
+        self.assertEqual(peer.fetch(9, 'T1'), ())
+        self.assertEqual(peer.delivery_subscribers(Publication('late', 'T1', 0, 'N', 0, {}), 1), ())
+        peer.subscribe_local(Subscription(9, 'T1', {'N', 'S'}), 1)
+        self.assertEqual(peer.fetch(9, 'T1'), ())
+
     def test_delta_only_when_filter_changes_and_wire_round_trip(self):
         peer = PSPeerService()
         sub = Subscription(9, 'T1', {'N'})

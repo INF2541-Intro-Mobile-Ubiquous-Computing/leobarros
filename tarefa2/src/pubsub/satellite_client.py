@@ -10,6 +10,10 @@ from utils.common.config import PUBSUB_TRANSPORT_MAX_HOPS
 
 
 class PubSubSatelliteMixin(PubSubAdapterMixin, PubSubTransportMixin):
+    def _start_exchange(self, ack_node_id: int) -> None:
+        super()._start_exchange(ack_node_id)
+        self.resume_pubsub()
+
     def _forward_pubsub(self, packet: dict) -> bool:
         # Satellites originate requests only; they never relay core traffic.
         if (self._state != ST_EXCHANGE or self._ack_node is None

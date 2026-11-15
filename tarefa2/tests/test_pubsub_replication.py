@@ -10,7 +10,7 @@ from gradysim.simulator.handler.timer import TimerHandler
 from gradysim.simulator.simulation import SimulationBuilder, SimulationConfiguration
 
 from src.pubsub.adapter import PubSubAdapterMixin
-from src.pubsub.models import Publication
+from src.pubsub.models import FetchEnvelope, Publication
 from src.pubsub.pspeer_mixin import PSPeerMixin
 from src.pubsub.radio import PubSubCommunicationHandler, ReplicateBroadcastCommand
 import test_pubsub_transport as transport_tests
@@ -49,21 +49,24 @@ class PubSubReplicationTests(unittest.TestCase):
                         self.publish_pubsub(item)
                 elif timer == 'repeat':
                     if second_ingress:
-                        self.select_pspeer(1)
+                        self.selected_pspeer = 1  # raw protocol probe; no client resume
                     # Same ID with a different body must not replace the first copy.
                     self.publish_pubsub(replace(items[0], payload={'value': ['changed']}))
                 elif timer.startswith('fetch_'):
-                    self.select_pspeer({'fetch_b': 1, 'fetch_c': 2, 'fetch_a': 0}[timer])
-                    self.fetch_pubsub('T1')
+                    self.selected_pspeer = {'fetch_b': 1, 'fetch_c': 2, 'fetch_a': 0}[timer]
+                    # Probe replica history without a receipt report. Incremental
+                    # client behavior is tested separately in stage 17.
+                    self.send_pubsub(self.selected_pspeer, FetchEnvelope(4, 4, 'T1'))
 
             def handle_packet(self, message):
                 if json.loads(message).get('msg_type') == 'pubsub_replicate':
                     self.replica_packets.append(json.loads(message))
                 super().handle_packet(message)
 
-            def on_pubsub_delivery(self, message):
-                if not message.is_push:  # keep testing explicit queries independently of push
+            def handle_pubsub(self, message, source_id):
+                if message.operation.value == 'DELIVER' and not message.is_push:
                     self.deliveries.append(message)
+                super().handle_pubsub(message, source_id)
 
         class Peer(PSPeerMixin, Core):
             pspeer_slot = 0

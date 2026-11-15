@@ -95,7 +95,15 @@ class ReplicateEnvelope(Envelope):
 class FetchEnvelope(Envelope):
     subscriber_id: int
     topic: str
+    received_ids: tuple[str, ...] = field(default_factory=tuple)
     operation: ClassVar[Operation] = Operation.FETCH
+
+    def __post_init__(self) -> None:
+        if isinstance(self.received_ids, (str, bytes)):
+            raise ValueError('received_ids must be a collection of message IDs')
+        if any(not isinstance(item, str) or not item for item in self.received_ids):
+            raise ValueError('received_ids must contain nonempty strings')
+        object.__setattr__(self, 'received_ids', tuple(sorted(set(self.received_ids))))
 
 
 @dataclass(frozen=True)

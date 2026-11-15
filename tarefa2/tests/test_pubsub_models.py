@@ -9,6 +9,14 @@ from src.pubsub.models import (
 
 
 class PubSubModelsTests(unittest.TestCase):
+    def test_fetch_receipt_ids_round_trip_and_validate(self):
+        message = FetchEnvelope(1, 1, 'T1', ('b', 'a', 'b'))
+        self.assertEqual(message.received_ids, ('a', 'b'))
+        self.assertEqual(envelope_from_json(message.to_json()), message)
+        for invalid in ('id', ('',), (1,)):
+            with self.assertRaises(ValueError):
+                FetchEnvelope(1, 1, 'T1', invalid)
+
     def setUp(self):
         self.publication = Publication('uav-12:1', 'T1', 12, Region.N, 2.5,
                                        {'sensor_id': 3, 'values': [1, None, True]})

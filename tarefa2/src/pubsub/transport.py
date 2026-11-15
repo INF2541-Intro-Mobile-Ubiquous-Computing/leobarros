@@ -2,7 +2,7 @@
 
 The supported topology is star: send to a known neighbor or through the known
 hub. No global node registry, extra discovery flood, ACK or retry is used.
-Connected satellites use SwCore's existing route table; no Pub/Sub buffering yet.
+Satellites use SwCore's existing route table and isolated entries in its buffer.
 """
 import json
 import logging
@@ -37,6 +37,34 @@ class PubSubTransportMixin:
         super().initialize()
         self._pubsub_sequence = 0
         self._pubsub_seen: set[str] = set()
+        self._pubsub_delivery_state = {}  # transport ID: pending or submitted (never received)
+
+    def _buffered_for(self, sat: int) -> list:
+        # The original SwCore callbacks must never serialize Pub/Sub as dock_data.
+        return [entry for entry in super()._buffered_for(sat) if 'pubsub_packet' not in entry]
+
+    def _on_connect(self, sat: int, face: str) -> None:
+        super()._on_connect(sat, face)
+        self._flush_pubsub(sat)
+
+    def _on_rt_update(self, raw: dict) -> None:
+        super()._on_rt_update(raw)
+        if raw['state'] == 'reachable':
+            self._flush_pubsub(raw['sat'])
+
+    def _flush_pubsub(self, sat: int) -> None:
+        for key, entry in list(self._core_buffer.items()):
+            if entry.get('dest_sat') == sat and 'pubsub_packet' in entry:
+                if self._forward_pubsub(entry['pubsub_packet']):
+                    self._core_buffer.pop(key, None)
+
+    def _queue_pubsub(self, packet: dict) -> None:
+        if packet['payload'].get('operation') == 'DELIVER':
+            key = 'pubsub-buffer:' + packet['transport_id']
+            self._core_buffer[key] = dict(dest_sat=packet['destination'], pubsub_packet=dict(packet))
+            self._pubsub_delivery_state[packet['transport_id']] = 'pending'
+            logging.info('[PUBSUB buffer] node=%s destination=%s state=pending',
+                         self.provider.get_id(), packet['destination'])
 
     def send_pubsub(self, destination: int, message: Envelope) -> bool:
         """Return whether dispatched locally or submitted to the next radio hop.
@@ -72,7 +100,8 @@ class PubSubTransportMixin:
                   and route['next_hop'] != packet.get('sender_id')):
                 next_hop = route['next_hop']
             else:
-                return False  # satellite unavailable: buffering belongs to stage 17
+                self._queue_pubsub(packet)
+                return False  # retained for the next reachable SwCore update
         elif destination in neighbors:
             next_hop = destination
         else:
@@ -86,6 +115,8 @@ class PubSubTransportMixin:
                       self.provider.get_id(), packet['source_id'], destination,
                       next_hop, outgoing['hops'], packet['payload']['operation'])
         self._send(outgoing, next_hop)  # SWCoreMixin: real radio unicast
+        if packet['payload'].get('operation') == 'DELIVER':
+            self._pubsub_delivery_state[packet['transport_id']] = 'submitted'
         return True
 
     def handle_packet(self, message: str) -> None:

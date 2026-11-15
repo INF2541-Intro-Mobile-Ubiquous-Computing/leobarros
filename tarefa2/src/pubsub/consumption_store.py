@@ -43,3 +43,14 @@ class ConsumptionStore:
             return False
         self._consumed.setdefault(key, set()).add(message_id)
         return True
+
+    def report_received(self, subscriber_id: int, topic: str, message_ids: tuple[str, ...]) -> None:
+        """Merge the subscriber's receipt report, even before a replica arrives.
+
+        This is explicit client evidence, never inferred from an attempted send.
+        Retaining unknown IDs prevents late publication replicas becoming unread.
+        """
+        self._consumed.setdefault((subscriber_id, topic), set()).update(message_ids)
+
+    def is_consumed(self, subscriber_id: int, topic: str, message_id: str) -> bool:
+        return message_id in self._consumed.get((subscriber_id, topic), set())

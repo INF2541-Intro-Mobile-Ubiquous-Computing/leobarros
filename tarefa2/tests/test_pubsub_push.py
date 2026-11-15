@@ -158,7 +158,9 @@ class PubSubPushTests(unittest.TestCase):
         self.assertEqual(nodes[6].deliveries, [])
         self.assertNotIn((2, 6), radio.pushes)
         self.assertEqual(nodes[2].pspeer_service.fetch(6, 'T1'), (item,))
-        self.assertEqual(nodes[2]._core_buffer, {})
+        self.assertEqual(len(nodes[2]._core_buffer), 1)
+        self.assertEqual(list(nodes[2]._pubsub_delivery_state.values()), ['pending'])
+        self.assertEqual(nodes[2]._buffered_for(6), [])  # excluded from legacy dock delivery
         self.assertFalse(nodes[6].fetch_pubsub('T1'))
 
     def test_send_loss_does_not_mark_consumption_or_retry(self):
@@ -173,7 +175,7 @@ class PubSubPushTests(unittest.TestCase):
         enabled = make_satellite('N', swcore=True, pubsub=True)
         self.assertFalse(issubclass(plain, PubSubSatelliteMixin))
         self.assertTrue(issubclass(enabled, PubSubSatelliteMixin))
-        for method in ('handle_telemetry', '_depart', '_start_exchange'):
+        for method in ('handle_telemetry', '_depart'):
             self.assertEqual(getattr(plain, method).__qualname__, getattr(enabled, method).__qualname__)
         with self.assertRaises(ValueError):
             make_satellite('N', pubsub=True)

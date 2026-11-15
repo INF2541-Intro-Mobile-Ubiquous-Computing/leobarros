@@ -127,9 +127,10 @@ rim-to-rim delivery, with per-instance transport IDs and duplicate suppression.
 `PUBSUB_TRANSPORT_MAX_HOPS` bounds forwarding. Sending to self dispatches locally.
 
 The return value indicates local dispatch or submission to the next hop, not
-confirmed delivery. Without a known next hop it returns `False`; no retry or
-queue is added. Connected satellites use the existing SwCore route table and
-radio unicast; unavailable satellites return `False` when already known as such.
+confirmed delivery. Without a known next hop it returns `False`. DELIVER for a
+known unavailable satellite is retained in the existing SwCore buffer, with
+separate Pub/Sub entries. Connected satellites use the SwCore route table and
+radio unicast; no periodic retry or transmission acknowledgment is added.
 Existing SwCore satellite traffic keeps its original routing and buffers.
 
 Core clients select a single simulator node ID with `select_pspeer(node_id)`, then
@@ -137,8 +138,8 @@ call `subscribe_pubsub(topic, accepted_regions)`, `publish_pubsub(publication)`
 and `fetch_pubsub(topic)`. Without a selected peer these calls return `False`.
 The adapter processes requests only at PSPeers. FETCH returns eligible history
 over the same radio transport using DELIVER, including an empty result; clients
-receive it through `on_pubsub_delivery(envelope)`. No consumption is marked,
-so repeated queries can return the same IDs. There is no automatic peer choice,
+receive it through `on_pubsub_delivery(envelope)`. Successful receipt is recorded
+locally and reported by subsequent FETCH requests. There is no automatic peer choice or
 spontaneous generation of publications/subscriptions. Request/response logs are
 INFO; per-hop paths are DEBUG. `tests/test_pubsub_adapter.py` exercises this path.
 
@@ -146,7 +147,8 @@ INFO; per-hop paths are DEBUG. `tests/test_pubsub_adapter.py` exercises this pat
 
 A changed client subscription triggers one SYNC broadcast containing only that
 delta. PSPeers apply newer versions; other core nodes discard it. Receivers do
-not forward or acknowledge it, and identical subscriptions cause no new send.
+not forward or acknowledge it. Identical subscriptions at the same responsible
+peer cause no new send; rebinding to a different peer creates a new version.
 Per-subscription ordering uses `(Lamport version, sender ID)` to reject duplicates
 and delayed older updates and break concurrent ties deterministically. It does
 not establish wall-clock recency. Version zero is legacy data and is not applied.
@@ -189,23 +191,48 @@ agree, without exposing subscribers to the publisher. Received replicas never
 trigger another REPLICATE. Repeated publication IDs do not trigger another push.
 
 `DeliverEnvelope.is_push` distinguishes live deliveries from FETCH replies.
-Clients accept push from the selected peer, check their local topic/region filter
-and suppress repeated publication IDs before invoking `on_pubsub_delivery`.
-FETCH snapshots retain their previous behavior, including repeated IDs: receipt
-does not mark server-side consumption or synchronize read state.
+Clients accept delivery from the selected peer, check their local topic/region
+filter and suppress repeated publication IDs for both push and FETCH before
+invoking `on_pubsub_delivery`. IDs enter the receipt ledger only after the callback
+returns successfully. Empty FETCH results still invoke the callback.
 
 With `--pubsub`, satellites also expose the client API. Requests go through the
 current contact node only during the existing EXCHANGE state; incoming application
 deliveries are accepted only in that state. The core uses SwCore's `direct`/`hop`
 routes learned through its original connect/disconnect messages. Pub/Sub does not
 change movement, sensor uploads, departure timing, or the original dock deliveries.
-No automatic subscription, FETCH on reconnection, buffering or retry is added.
+Existing subscriptions are resent and FETCH runs automatically upon contact.
+No random subscription generation or change to departure timing is added.
 
 Losses and stale subscription replicas can cause missed delivery. Selecting a
-different peer alone does not transfer subscription responsibility; unchanged
-filters still emit no new SYNC. Historical messages remain available via explicit
-FETCH. `test_pubsub_push.py` covers TF01–TF03, three responsible peers, a satellite
+different peer resends known subscriptions and fetches unread history (satellites
+retry this on contact if currently offline). The accepting peer takes responsibility
+with a new subscription version, even for an unchanged filter. `test_pubsub_push.py`
+covers TF01–TF03, three responsible peers, a satellite
 reached in three radio hops, duplicate push, disconnection and delivery loss.
+
+### Reconnection and incremental consumption
+
+`FetchEnvelope.received_ids` carries the client's confirmed IDs for that topic.
+The consulted peer merges this report before querying unread history, retaining
+IDs even if the publication replica has not yet arrived. The client keeps its
+ledger across contacts and peer changes. This is client-carried confirmation,
+not peer-wide read-state replication or a standalone ACK protocol. A peer that
+has not received a report may still send an old item; the client suppresses it.
+Lost reports are included again in the next FETCH, without periodic retries.
+
+Pending satellite DELIVER packets share `_core_buffer` with SwCore under separate
+keys and without `dest_face`; original dock delivery excludes them. Connect and
+reachable-route callbacks flush them through Pub/Sub radio transport. Transport
+state distinguishes `pending` from `submitted`; only the client ledger proves
+receipt. A send removes a pending entry without implying consumption. FETCH can
+recover lost transmissions from peer history; it cannot recover a publication
+missing from that peer due to replication loss. Unknown satellite routes are not
+invented, and client state is in memory, not persistent across process restarts.
+
+`test_pubsub_reconnection.py` tests TF06 with exact IDs across repeated contacts,
+peer change, lost delivery/report, buffer flushing and callback failure. Receipt
+reports grow with topic history; bounded summaries are not implemented.
 
 ### Logging
 

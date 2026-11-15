@@ -20,11 +20,12 @@ class PSPeerService:
         self._subscription_versions: dict[tuple[int, str], tuple[int, int]] = {}
 
     def subscribe_local(self, subscription: Subscription, peer_id: int) -> SyncEnvelope | None:
-        """Apply a changed client filter and produce one versioned delta to send."""
-        if not self.subscribe(subscription):
+        """Apply a changed filter or owner and produce one versioned delta to send."""
+        key = (subscription.subscriber_id, subscription.topic)
+        changed = self.subscribe(subscription)
+        if not changed and self._subscription_versions.get(key, (0, None))[1] == peer_id:
             return None
         self._subscription_clock += 1
-        key = (subscription.subscriber_id, subscription.topic)
         self._subscription_versions[key] = (self._subscription_clock, peer_id)
         return SyncEnvelope(peer_id, (subscription,), self._subscription_clock)
 
@@ -64,11 +65,16 @@ class PSPeerService:
         return tuple(sub.subscriber_id
                      for sub in self._subscriptions.get_matching_subscriptions(publication)
                      if self._subscription_versions.get((sub.subscriber_id, sub.topic), (0, None))[1]
-                     == peer_id)
+                     == peer_id
+                     and not self._consumption.is_consumed(sub.subscriber_id, sub.topic,
+                                                          publication.message_id))
 
     def fetch(self, subscriber_id: int, topic: str) -> tuple[Publication, ...]:
         """Read eligible, unconsumed history without marking it as delivered."""
         return self._consumption.get_unread(subscriber_id, topic)
+
+    def report_received(self, subscriber_id: int, topic: str, message_ids: tuple[str, ...]) -> None:
+        self._consumption.report_received(subscriber_id, topic, message_ids)
 
     def mark_consumed(self, subscriber_id: int, topic: str, message_id: str) -> bool:
         """Record receipt explicitly confirmed by the caller, never just a send.
