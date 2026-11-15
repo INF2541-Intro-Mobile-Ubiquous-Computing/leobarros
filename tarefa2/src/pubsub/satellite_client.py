@@ -5,6 +5,7 @@ from gradysim.protocol.messages.communication import SendMessageCommand
 
 from src.pubsub.adapter import PubSubAdapterMixin
 from src.pubsub.transport import PubSubTransportMixin
+from src.pubsub.events import pubsub_event
 from src.satellite import ST_EXCHANGE
 from utils.common.config import PUBSUB_TRANSPORT_MAX_HOPS
 
@@ -12,6 +13,9 @@ from utils.common.config import PUBSUB_TRANSPORT_MAX_HOPS
 class PubSubSatelliteMixin(PubSubAdapterMixin, PubSubTransportMixin):
     def _start_exchange(self, ack_node_id: int) -> None:
         super()._start_exchange(ack_node_id)
+        pubsub_event(self, 'contact_started', contact=ack_node_id, peer=self.selected_pspeer,
+                     region=getattr(self, 'sensor_origin_region', None),
+                     completed_cycles=getattr(self, '_dock_count', 0))
         self.resume_pubsub()
 
     def _forward_pubsub(self, packet: dict) -> bool:

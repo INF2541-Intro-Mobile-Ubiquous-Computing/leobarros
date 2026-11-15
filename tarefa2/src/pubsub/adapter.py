@@ -6,6 +6,7 @@ from src.pubsub.models import (
     ReplicateEnvelope, SubscribeEnvelope, Subscription, SyncEnvelope,
 )
 from src.pubsub.subscription_store import matches
+from src.pubsub.events import pubsub_event
 
 
 class PubSubAdapterMixin:
@@ -40,6 +41,8 @@ class PubSubAdapterMixin:
         node = self.provider.get_id()
         subscription = Subscription(node, topic, accepted_regions)
         self._client_subscriptions[topic] = subscription
+        pubsub_event(self, 'subscription_requested', topic=topic,
+                     regions=sorted(r.value for r in subscription.accepted_regions), peer=self.selected_pspeer)
         return self._send_request(SubscribeEnvelope(node, subscription))
 
     def publish_pubsub(self, publication: Publication) -> bool:
@@ -78,6 +81,11 @@ class PubSubAdapterMixin:
                 # Only successful application receipt enters the client ledger.
                 for publication in publications:
                     self._received_ids.setdefault(publication.topic, set()).add(publication.message_id)
+                    pubsub_event(self, 'publication_received', message_id=publication.message_id,
+                                 topic=publication.topic, region=publication.origin_region.value,
+                                 origin=publication.origin_id, created_at=publication.created_at,
+                                 peer=source_id, is_push=message.is_push,
+                                 regions=sorted(r.value for r in self._client_subscriptions[publication.topic].accepted_regions))
             return
         service = getattr(self, 'pspeer_service', None)
         if service is None:
@@ -90,6 +98,7 @@ class PubSubAdapterMixin:
                 self.broadcast_pubsub_sync(delta)
         elif isinstance(message, SyncEnvelope):
             applied = service.apply_sync(message)
+            pubsub_event(self, 'subscription_sync', source=source_id, version=message.version, applied=applied)
             logging.info('[PUBSUB sync] node=%s source=%s version=%s applied=%s',
                          node, source_id, message.version, applied)
             return
@@ -97,6 +106,7 @@ class PubSubAdapterMixin:
             if message.publication.origin_id != source_id:
                 return
             if service.publish(message.publication):
+                self._log_publication_stored(message.publication, source_id, replica=False)
                 self.broadcast_pubsub_replication(ReplicateEnvelope(node, message.publication))
                 self._push_publication(message.publication)
         elif isinstance(message, ReplicateEnvelope):
@@ -104,6 +114,7 @@ class PubSubAdapterMixin:
             logging.info('[PUBSUB replicate] node=%s source=%s message_id=%s inserted=%s',
                          node, source_id, message.publication.message_id, inserted)
             if inserted:
+                self._log_publication_stored(message.publication, source_id, replica=True)
                 self._push_publication(message.publication)
             return  # Never re-broadcast a received replica, even when newly stored.
         elif isinstance(message, FetchEnvelope):
@@ -117,6 +128,8 @@ class PubSubAdapterMixin:
                     self.broadcast_pubsub_sync(delta)
             service.report_received(source_id, message.topic, message.received_ids)
             publications = service.fetch(source_id, message.topic)
+            pubsub_event(self, 'history_requested', subscriber=source_id, topic=message.topic,
+                         reported_ids=len(message.received_ids), unread=len(publications))
             submitted = self.send_pubsub(source_id, DeliverEnvelope(node, source_id, publications))
             logging.info('[PUBSUB peer] node=%s client=%s response=DELIVER count=%s submitted=%s',
                          node, source_id, len(publications), submitted)
@@ -124,6 +137,12 @@ class PubSubAdapterMixin:
             return
         logging.info('[PUBSUB peer] node=%s client=%s operation=%s',
                      node, source_id, message.operation.value)
+
+    def _log_publication_stored(self, publication: Publication, source: int, replica: bool) -> None:
+        pubsub_event(self, 'publication_stored', message_id=publication.message_id,
+                     topic=publication.topic, region=publication.origin_region.value,
+                     origin=publication.origin_id, created_at=publication.created_at,
+                     source=source, replica=replica)
 
     def _push_publication(self, publication: Publication) -> None:
         node = self.provider.get_id()

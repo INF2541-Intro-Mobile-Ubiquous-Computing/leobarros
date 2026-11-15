@@ -277,9 +277,45 @@ invented, and client state is in memory, not persistent across process restarts.
 peer change, lost delivery/report, buffer flushing and callback failure. Receipt
 reports grow with topic history; bounded summaries are not implemented.
 
+### Integrated scenario validation (stage 22)
+
+Run the fixed 300-second audit from `tarefa2`:
+
+```powershell
+../.venv/Scripts/python.exe -B tests/check_integrated_scenario.py
+```
+
+It runs the actual main scenario and inspects observations only after the run:
+three peers with equal publication/subscription copies, both topics and all five
+regions, eligible nonduplicate application receipts, historical delivery and
+multiple completed cycles for every satellite. The observer never supplies data
+to protocols. Its success marker is `INTEGRATED_SCENARIO_OK`; it also saves an
+ignored diagnostic snapshot of original traffic in `.cache/stage22-traffic.json`.
+This is a fixed integration check, not the later metric/seed-sweep runner.
+
+The stage-22 run completed 13 cycles each for N/E/S and 14 for W. The three peers
+held 1,211 publications and 26 subscriptions; 14,749 unique subscriber/publication
+receipts were observed, including 7,044 historical receipts. These are diagnostic
+counts for this run, not final performance metrics or delivery guarantees.
+
+A separate baseline comparison found **55 original uploads / 53 deliveries without
+Pub/Sub**, versus **53 / 47 with Pub/Sub**. The original movement/dock rules remain
+unchanged, but numerical equivalence is not established. GrADyS-SIM compares event
+timestamps without a tie-breaker; adding events can reorder equal-time legacy
+events (confirmed with a small isolated event-loop check). This is a plausible
+mechanism for the difference, not an attribution of every differing delivery.
+No dependency or scheduler modifications were made.
+
 ### Logging
 
 Set `LOG_LEVEL` in `utils/common/config.py` before starting a run:
+
+`[PUBSUB event]` records contain JSON with `event`, `node`, `time` and event-specific
+IDs, topic, regions and timestamps. They cover subscription requests/synchronization,
+peer storage, actual application receipt, history requests and satellite contacts.
+Publication payload contents are omitted. Custom Python logging handlers can read
+the same dictionary from `record.pubsub_event`, independent of console wrapping.
+Existing detailed logs and their levels remain available.
 
 ```python
 LOG_LEVEL = "INFO"  # default; keeps execution start/end messages

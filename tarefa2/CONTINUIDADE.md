@@ -1,6 +1,6 @@
 ﻿# Continuidade do projeto Tarefa 2
 
-Atualizado em 15/11/2026, após implementar a etapa 21. Leia este arquivo primeiro na nova conversa; depois, apenas os trechos de código relevantes à etapa autorizada. Este resumo não autoriza iniciar outra etapa automaticamente.
+Atualizado em 15/11/2026, após implementar a etapa 22. Leia este arquivo primeiro na nova conversa; depois, apenas os trechos de código relevantes à etapa autorizada. Este resumo não autoriza iniciar outra etapa automaticamente.
 
 ## Regras do usuário e modo econômico
 
@@ -31,9 +31,9 @@ Atualizado em 15/11/2026, após implementar a etapa 21. Leia este arquivo primei
 
 ## Estado atual e revisão pendente
 
-**Etapas 01–21 implementadas e testadas. Próxima: 22, somente após solicitação do usuário.** Os PSPeers sincronizam assinaturas, replicam publicações e enviam DELIVER individual aos assinantes elegíveis. Satélites conectados têm cliente Pub/Sub opt-in. Coletas reais de sensores agora geram publicações nos satélites; o core também gera publicações aleatórias com região C; core e satélites agora geram assinaturas dinâmicas reproduzíveis.
+**Etapas 01–22 implementadas e testadas. Próxima: 23, somente após solicitação do usuário.** Os PSPeers sincronizam assinaturas, replicam publicações e enviam DELIVER individual aos assinantes elegíveis. Satélites conectados têm cliente Pub/Sub opt-in. Coletas reais de sensores agora geram publicações nos satélites; o core também gera publicações aleatórias com região C; core e satélites agora geram assinaturas dinâmicas reproduzíveis.
 
-Na entrada da etapa 21, `git status --short tarefa2` estava limpo. As mudanças desta etapa ficam para revisão e commit do usuário; nenhum comando de staging ou commit foi executado pelo agente.
+Na entrada da etapa 22, `git status --short tarefa2` estava limpo. As mudanças desta etapa ficam para revisão e commit do usuário; nenhum comando de staging ou commit foi executado pelo agente.
 
 | Etapas concluídas | Resultado |
 | --- | --- |
@@ -92,13 +92,13 @@ Por pedido do usuário, todos os logs detalhados preexistentes da aplicação fo
 | 19 — concluída | Converter coleta dos satélites em publicações reais por tópico/paridade e região N/S/E/W; armazenar durante afastamento e transmitir no contato. |
 | 20 — concluída | Timers de publicações aleatórias do core em T1/T2, região C, semente reproduzível; entrega conforme filtro. TF04. |
 | 21 — concluída | Assinaturas dinâmicas de core/satélites, tópico e subconjunto de regiões por semente; satélites enviam no contato; permitir ambos os tópicos. Histórico elegível e TF05. |
-| **22 — próxima** | Cenário integrado com três peers, eventos dinâmicos, filtros, sincronização, histórico e reconexão. Logs estruturados. Executar ciclo relevante de todos os satélites. |
-| 23 | Automatizar TF01–TF06 usando comunicação real simulada, não apenas chamadas locais. Executar isolados/juntos; TF06 verifica IDs, não só contagem. |
+| 22 — concluída | Cenário integrado com três peers, eventos dinâmicos, filtros, sincronização, histórico e reconexão. Logs estruturados. Executar ciclo relevante de todos os satélites. |
+| **23 — próxima** | Automatizar TF01–TF06 usando comunicação real simulada, não apenas chamadas locais. Executar isolados/juntos; TF06 verifica IDs, não só contagem. |
 | 24 | Métricas por (publicação, assinante): entregas, latência, saltos; separar controle, sincronização, retransmissões SwCore e duplicatas. Validar denominadores em cenários pequenos. |
 | 25 | Runner reproduzível com semente/duração/parâmetros e exportação CSV/JSON; repetir sementes e comparar resultados. Métricas definitivas dependem do professor. |
 | 26 | README final, instalação/execução/testes/parâmetros/limitações/métricas, diagrama e responsabilidades; validar ambiente limpo e autonomia da pasta tarefa2. |
 
-Marcos: M2 (lógica local) concluído na 10; M3 assinaturas sincronizadas concluído na 14; M4 rede/reconexão concluído na 17; M5 integração na 22; M6 entrega na 26.
+Marcos: M2 (lógica local) concluído na 10; M3 assinaturas sincronizadas concluído na 14; M4 rede/reconexão concluído na 17; M5 integração concluído na 22; M6 entrega na 26.
 
 ## Questões importantes ainda não resolvidas
 
@@ -125,7 +125,7 @@ Executar a partir de `tarefa2`:
 ../.venv/Scripts/python.exe -B -m src.main --no-viz --topology star --routing-strategy swcore
 ```
 
-- Último resultado: **146 testes passaram**, incluindo oito novos da etapa 21; suíte local: **49 testes**, runner verifica que nenhum módulo `gradysim` foi importado.
+- Último resultado: **146 testes passaram**, além da verificação integrada da etapa 22; suíte local: **49 testes**, runner verifica que nenhum módulo `gradysim` foi importado.
 - Transporte testado com três nós em posições 0/25/50 m, rádio 30 m: origem e destino não têm alcance direto, e a entrega exige dois saltos via hub. Testes incluem envio direto/local, duplicação, ausência de vizinhos, destino desconhecido, TTL e opt-in das fábricas.
 - Validação etapa 12: duas execuções independentes de 300 segundos (com/sem Pub/Sub) tiveram **55 uploads e 53 entregas satélite–satélite**, com os mesmos IDs, instantes de criação/entrega e saltos. Isso valida preservação do tráfego original; não são publicações Pub/Sub.
 - Logs `verification-*.log` e `.cache/` são ignorados. PowerShell pode rotular saída stderr normal do logging/unittest como `NativeCommandError` na redireção: conferir exit code e resultado real antes de diagnosticar falha.
@@ -134,8 +134,8 @@ Executar a partir de `tarefa2`:
 ## Retomada mínima
 
 1. Ler este resumo e verificar `git status --short tarefa2`.
-2. Aguardar/seguir a etapa explicitamente solicitada pelo usuário; a próxima prevista é 22.
-3. Para 22, preparar o cenário integrado com três peers, publicações, filtros, sincronização, histórico e reconexão; executar ciclo relevante de todos os satélites e validar logs, sem antecipar métricas definitivas ou runner das etapas posteriores.
+2. Aguardar/seguir a etapa explicitamente solicitada pelo usuário; a próxima prevista é 23.
+3. Para 23, consolidar TF01–TF06 automatizados por rádio, isolados/juntos e com IDs exatos; aproveitar testes existentes e manter separada a auditoria integrada de 300 s. Consultar a diferença numérica do tráfego original registrada abaixo.
 4. Implementar e testar somente a etapa; apresentar resumo curto e parar para revisão/commit.
 
 ## Entrega da etapa 13
@@ -234,3 +234,16 @@ Esta seção substitui as limitações históricas das etapas anteriores quanto 
 - Simulação completa de 300 s concluída sem erros após a correção de ordem, com 780 eventos de assinatura (60 por cada um dos 13 UAVs). A primeira execução foi repetida porque o contrato FETCH foi corrigido durante a validação. Não foi executada a etapa 22 nem repetida a comparação detalhada de métricas da etapa 12.
 - Limites mantidos: submissão não confirma entrega; SYNC/REPLICATE podem se perder; consumo não é globalmente instantâneo. Filtros locais são os mais recentes do cliente; não há ordenação causal adicional de múltiplas alterações do cliente em trânsito com atrasos arbitrários.
 - Arquivos: novo dynamic_subscriptions.py, composição uav.py, modelos/adapter para FETCH com filtro, novo test_dynamic_subscriptions.py, testes de modelos/adapter, README e continuidade. Sem commit/staging ou início da etapa 22. Descrições históricas sobre ausência de assinaturas espontâneas não representam mais o cenário atual.
+
+## Entrega da etapa 22
+
+- Cenário padrão integrado validado sem modificar topologia, intervalos ou algoritmos: três peers, publicações do core/sensores, assinaturas dinâmicas, filtros, sincronização, histórico e múltiplos contatos dos quatro satélites.
+- Novo events.py emite logs JSON `[PUBSUB event]` e disponibiliza record.pubsub_event a observadores. Campos comuns event/node/time; campos específicos incluem IDs, origem, tópico, regiões, timestamp de criação, peer e tipo de entrega. Sem conteúdo dos payloads ou estado global de comunicação.
+- Adapter registra pedido de assinatura, SYNC aplicado, armazenamento original/réplica, consulta de histórico e recebimento efetivo após callback. Satellite client registra contato com contador de ciclos. Logs são observacionais e não mudam roteamento ou consumo.
+- Novo `tests/check_integrated_scenario.py`: verificação fixa de 300 s, separada da descoberta unittest. Usa main/fábricas reais e observa estados/logs; não injeta eventos de aplicação, assinaturas ou stores. Confere igualdade das cópias dos três peers, tópicos/regiões, ausência de duplicatas de recebimento, filtros, ledger, histórico e pelo menos dois ciclos por satélite. Executar da pasta tarefa2 com `../.venv/Scripts/python.exe -B tests/check_integrated_scenario.py`.
+- Resultado: INTEGRATED_SCENARIO_OK. Peers 14/17/20 com 1.211 publicações e 26 assinaturas iguais; 14.749 pares assinante/publicação recebidos sem repetição, incluindo 7.044 históricos. Ciclos N/E/S=13 e W=14; recebimentos dos satélites N=1.059, E=1.024, S=1.024, W=983. Contagens diagnósticas desta execução, não métricas finais nem garantia de entrega.
+- Suíte existente: 146 testes passaram. Suíte local permanece com 49 testes; não foi necessário repeti-la, pois as alterações desta etapa são de observabilidade/rede.
+- Comparação original refeita em processos independentes: baseline sem Pub/Sub 55 uploads/53 entregas; com Pub/Sub 53 uploads/47 entregas, 33 registros compartilhados com alguma diferença. Portanto não afirmar equivalência numérica ao baseline. Arquivos de diagnóstico ignorados: .cache/stage22-baseline.json e .cache/stage22-traffic.json.
+- Limitação investigada: Event.__lt__ da biblioteca compara só timestamp. Um teste isolado com seis eventos de mesmo instante mostrou ordem a,c,f,e,b,d; acrescentar um evento anterior mudou a ordem para a,f,c,e,b,d. Acrescentar eventos Pub/Sub pode alterar empates de eventos legados e contatos/partidas; essa é uma explicação possível, não uma prova causal de cada diferença. Código original de mobilidade/dock e dependência não foram alterados. Correção ampla do scheduler não faz parte desta etapa.
+- Logs: verification-stage22-integrated.log, verification-stage22-baseline.log e verification-stage22-suite.log, ignorados. Auditoria integrada escreve o snapshot original na pasta .cache. Não foi criado runner de varredura de sementes/métricas ou exportação definitiva das etapas 24/25.
+- Arquivos: novo events.py, instrumentação adapter.py/satellite_client.py, novo check_integrated_scenario.py, README e continuidade. Sem commit/staging ou início da etapa 23.
