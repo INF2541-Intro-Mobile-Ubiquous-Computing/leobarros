@@ -13,6 +13,7 @@ import logging
 import argparse
 import random
 from src.pubsub.radio import PubSubCommunicationHandler
+from utils.common.config import REAL_TIME 
 
 from gradysim.simulator.handler.communication import (
     CommunicationHandler,
@@ -112,7 +113,8 @@ def main() -> None:
     random.seed(RANDOM_SEED)
 
     # ── Simulation config ──────────────────────────────────────────────────
-    config  = SimulationConfiguration(duration=SIMULATION_DURATION)
+    config  = SimulationConfiguration(duration=SIMULATION_DURATION,
+                                        real_time=REAL_TIME,)
     builder = SimulationBuilder(config)
 
     _log_derived()

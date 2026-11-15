@@ -18,6 +18,7 @@ from utils.common.sensor_positions import (
 # Simulation
 # ---------------------------------------------------------------------------
 SIMULATION_DURATION = 300         # seconds — one satellite cycle ~22 s
+REAL_TIME = 0.1
 
 # ---------------------------------------------------------------------------
 # Communication
