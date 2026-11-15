@@ -54,6 +54,9 @@ class PubSubTransportMixin:
                 return False
             next_hop = hubs[0]
         outgoing = dict(packet, hops=packet['hops'] + 1, next_hop=next_hop)
+        logging.debug('[PUBSUB hop] node=%s source=%s destination=%s next=%s hops=%s operation=%s',
+                      self.provider.get_id(), packet['source_id'], destination,
+                      next_hop, outgoing['hops'], packet['payload']['operation'])
         self._send(outgoing, next_hop)  # SWCoreMixin: real radio unicast
         return True
 

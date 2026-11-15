@@ -128,9 +128,19 @@ rim-to-rim delivery, with per-instance transport IDs and duplicate suppression.
 
 The return value indicates local dispatch or submission to the next hop, not
 confirmed delivery. Without a known next hop it returns `False`; no retry or
-queue is added. Application operation processing, satellite-addressed Pub/Sub
-delivery and synchronization remain for subsequent stages. Existing SwCore
+queue is added. Satellite-addressed Pub/Sub delivery and synchronization remain
+for subsequent stages. Existing SwCore
 satellite traffic keeps its original routing and buffers.
+
+Core clients select a single simulator node ID with `select_pspeer(node_id)`, then
+call `subscribe_pubsub(topic, accepted_regions)`, `publish_pubsub(publication)`
+and `fetch_pubsub(topic)`. Without a selected peer these calls return `False`.
+The adapter processes requests only at PSPeers. FETCH returns eligible history
+over the same radio transport using DELIVER, including an empty result; clients
+receive it through `on_pubsub_delivery(envelope)`. No consumption is marked,
+so repeated queries can return the same IDs. There is no automatic peer choice,
+spontaneous traffic, synchronization or push delivery. Request/response logs are
+INFO; per-hop paths are DEBUG. `tests/test_pubsub_adapter.py` exercises this path.
 
 ### Logging
 
