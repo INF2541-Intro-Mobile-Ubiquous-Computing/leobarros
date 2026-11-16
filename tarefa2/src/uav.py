@@ -30,6 +30,7 @@ from src.pubsub.pspeer_mixin import PSPeerMixin
 from src.pubsub.transport import PubSubTransportMixin
 from src.pubsub.adapter import PubSubAdapterMixin
 from src.pubsub.satellite_client import PubSubSatelliteMixin
+from src.pubsub.sensor_publications import SensorPublicationMixin
 from utils.common.config import PSPEER_COLOR
 
 
@@ -179,7 +180,8 @@ def make_random_uav(routing: str = "flooding", viz: bool = False) -> type:
     return _Rand
 
 
-def make_satellite(face: str, viz: bool = False, swcore: bool = False, pubsub: bool = False) -> type:
+def make_satellite(face: str, viz: bool = False, swcore: bool = False, pubsub: bool = False,
+                   pspeer_id: int | None = None) -> type:
     """
     Return a satellite protocol class for the given face.
 
@@ -191,8 +193,9 @@ def make_satellite(face: str, viz: bool = False, swcore: bool = False, pubsub: b
     if pubsub:
         if not swcore:
             raise ValueError('Satellite Pub/Sub requires swcore')
-        class PubSubSat(PubSubSatelliteMixin, BaseSat):
-            pass
+        class PubSubSat(SensorPublicationMixin, PubSubSatelliteMixin, BaseSat):
+            sensor_origin_region = face
+            initial_pspeer_id = pspeer_id
         BaseSat = PubSubSat
 
     if viz:

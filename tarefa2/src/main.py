@@ -126,10 +126,11 @@ def main() -> None:
     logging.debug(f"Topology:          {args.topology}")
     logging.debug(f"Routing strategy:  {args.routing_strategy}")
     if args.pubsub:
-        logging.debug("Pub/Sub configuration enabled: star + swcore; event generation not implemented yet.")
+        logging.debug("Pub/Sub enabled: star + swcore; sensor collections publish at satellite contacts.")
 
     viz = not args.no_viz
 
+    satellite_pspeer_id = None
     # ── Sensors (static nodes) ─────────────────────────────────────────────
     for sensor_name, sensor_pos in SENSOR_POSITIONS.items():
         builder.add_node(make_sensor(sensor_name), sensor_pos)
@@ -145,7 +146,9 @@ def main() -> None:
             RimClass = make_core_rim(k=k, routing=args.routing_strategy, viz=viz,
                                     pspeer=args.pubsub and k in PSPEER_SLOTS, pubsub=args.pubsub)
             logging.debug(f"Rim{k} start: {CORE_RIM_STARTS[k]}")
-            builder.add_node(RimClass, CORE_RIM_STARTS[k])
+            rim_id = builder.add_node(RimClass, CORE_RIM_STARTS[k])
+            if args.pubsub and k == PSPEER_SLOTS[0]:
+                satellite_pspeer_id = rim_id
     else:
         # ── Random core UAVs roaming inside the obstacle zone ──────────────
         for i, start in enumerate(random_uav_starts()):
@@ -156,7 +159,8 @@ def main() -> None:
     # ── Satellites N, E, S, W ─────────────────────────────────────────────
     for face in FACE_NAMES:
         SatClass = make_satellite(
-            face=face, viz=viz, swcore=args.routing_strategy == "swcore", pubsub=args.pubsub
+            face=face, viz=viz, swcore=args.routing_strategy == "swcore", pubsub=args.pubsub,
+            pspeer_id=satellite_pspeer_id
         )
         start = sat_start(face)
         logging.debug(f"Sat-{face} start: {start}")

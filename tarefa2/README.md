@@ -140,7 +140,8 @@ The adapter processes requests only at PSPeers. FETCH returns eligible history
 over the same radio transport using DELIVER, including an empty result; clients
 receive it through `on_pubsub_delivery(envelope)`. Successful receipt is recorded
 locally and reported by subsequent FETCH requests. There is no automatic peer choice or
-spontaneous generation of publications/subscriptions. Request/response logs are
+random generation of core publications/subscriptions. Satellite sensor collections
+generate publications as described below. Request/response logs are
 INFO; per-hop paths are DEBUG. `tests/test_pubsub_adapter.py` exercises this path.
 
 ### Subscription synchronization
@@ -313,8 +314,26 @@ offset is removed. Direct users of the bare template fall back to the node ID.
 `topic_for_sensor(id)` selects even IDs → T2 and odd IDs → T1 through
 `SENSOR_TOPIC_BY_PARITY` in `config.py`. Identity/topic mappings appear in DEBUG
 logs. Counts, generation intervals, TTL and satellite accumulation are unchanged.
-Stage 18 only defines identity and topic selection; conversion of sensor data
-into Pub/Sub publications is deferred to stage 19.
+With `--pubsub`, each sensor batch collected during COLLECT_OUT/COLLECT_IN creates
+one Publication. Its payload contains `sensor_id` and `packet_count`; its topic
+comes from parity and its origin region from the satellite face (N/S/E/W).
+`created_at` records collection time. IDs use satellite node ID plus an increasing
+per-instance counter and remain unchanged while queued.
+
+`SensorPublicationMixin` maintains a queue independent of the original satellite
+packet counter and SwCore upload. On EXCHANGE it submits queued publications via
+the contact node. The scenario gives each satellite only the actual node ID of
+the first peer in `PSPEER_SLOTS`, obtained from the builder; no shared node registry
+or global lookup is used. The selected peer can still be changed through the API.
+Without a peer/contact or when sending returns False, entries remain queued for
+the next contact. True removes an entry after submission to the first radio hop,
+not after confirmed receipt: subsequent loss is admitted, without ACK/retry.
+
+Original dock uploads, movement, collection counts and timers are preserved.
+Publication generation is opt-in; without `--pubsub` sensor traffic retains its
+original behavior. INFO logs identify collected batches and submission results.
+`test_sensor_publications.py` covers the radio path, both parities, four regions,
+stable pending IDs, loss and independence from original uploads/departure.
 
 Sensors are placed in a **cross-shaped corridor** covering both cardinal axes:
 - `|x| ≤ 25 m` (N-S corridor) OR `|y| ≤ 25 m` (E-W corridor)

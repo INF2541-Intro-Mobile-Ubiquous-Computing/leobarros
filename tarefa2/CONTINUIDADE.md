@@ -1,6 +1,6 @@
 ﻿# Continuidade do projeto Tarefa 2
 
-Atualizado em 15/11/2026, após implementar a etapa 18. Leia este arquivo primeiro na nova conversa; depois, apenas os trechos de código relevantes à etapa autorizada. Este resumo não autoriza iniciar outra etapa automaticamente.
+Atualizado em 15/11/2026, após implementar a etapa 19. Leia este arquivo primeiro na nova conversa; depois, apenas os trechos de código relevantes à etapa autorizada. Este resumo não autoriza iniciar outra etapa automaticamente.
 
 ## Regras do usuário e modo econômico
 
@@ -31,9 +31,9 @@ Atualizado em 15/11/2026, após implementar a etapa 18. Leia este arquivo primei
 
 ## Estado atual e revisão pendente
 
-**Etapas 01–18 implementadas e testadas. Próxima: 19, somente após solicitação do usuário.** Os PSPeers sincronizam assinaturas, replicam publicações e enviam DELIVER individual aos assinantes elegíveis. Satélites conectados têm cliente Pub/Sub opt-in. Não há geração espontânea de publicações/assinaturas.
+**Etapas 01–19 implementadas e testadas. Próxima: 20, somente após solicitação do usuário.** Os PSPeers sincronizam assinaturas, replicam publicações e enviam DELIVER individual aos assinantes elegíveis. Satélites conectados têm cliente Pub/Sub opt-in. Coletas reais de sensores agora geram publicações nos satélites; ainda não há publicações aleatórias do core nem assinaturas espontâneas.
 
-Na entrada da etapa 18, `git status --short tarefa2` estava limpo. As mudanças desta etapa ficam para revisão e commit do usuário; nenhum comando de staging ou commit foi executado pelo agente.
+Na entrada da etapa 19, `git status --short tarefa2` estava limpo. As mudanças desta etapa ficam para revisão e commit do usuário; nenhum comando de staging ou commit foi executado pelo agente.
 
 | Etapas concluídas | Resultado |
 | --- | --- |
@@ -89,8 +89,8 @@ Por pedido do usuário, todos os logs detalhados preexistentes da aplicação fo
 | 16 — concluída | DELIVER individual aos assinantes elegíveis, responsabilidade pelo peer da versão da assinatura, cliente de satélite conectado, deduplicação de push. TF01/02/03 testados. |
 | 17 — concluída | Reconexão e consumo incremental: FETCH ao conectar, reutilização de buffers SwCore, distinguir pendente/enviado/recebido. TF06 com IDs exatos e reconexões repetidas. Resolver confirmação/controle distribuído de consumo e troca de peer. |
 | 18 — concluída | Identificação única/estável de sensores; par→T2, ímpar→T1, preservando coleta original. Testar/logar ambas as paridades. |
-| **19 — próxima** | Converter coleta dos satélites em publicações reais por tópico/paridade e região N/S/E/W; armazenar durante afastamento e transmitir no contato. |
-| 20 | Timers de publicações aleatórias do core em T1/T2, região C, semente reproduzível; entrega conforme filtro. TF04. |
+| 19 — concluída | Converter coleta dos satélites em publicações reais por tópico/paridade e região N/S/E/W; armazenar durante afastamento e transmitir no contato. |
+| **20 — próxima** | Timers de publicações aleatórias do core em T1/T2, região C, semente reproduzível; entrega conforme filtro. TF04. |
 | 21 | Assinaturas dinâmicas de core/satélites, tópico e subconjunto de regiões por semente; satélites enviam no contato; permitir ambos os tópicos. Histórico elegível e TF05. |
 | 22 | Cenário integrado com três peers, eventos dinâmicos, filtros, sincronização, histórico e reconexão. Logs estruturados. Executar ciclo relevante de todos os satélites. |
 | 23 | Automatizar TF01–TF06 usando comunicação real simulada, não apenas chamadas locais. Executar isolados/juntos; TF06 verifica IDs, não só contagem. |
@@ -125,7 +125,7 @@ Executar a partir de `tarefa2`:
 ../.venv/Scripts/python.exe -B -m src.main --no-viz --topology star --routing-strategy swcore
 ```
 
-- Último resultado: **126 testes passaram**, incluindo cinco novos da etapa 18; suíte local: **48 testes**, runner verifica que nenhum módulo `gradysim` foi importado.
+- Último resultado: **132 testes passaram**, incluindo seis novos da etapa 19; suíte local: **48 testes**, runner verifica que nenhum módulo `gradysim` foi importado.
 - Transporte testado com três nós em posições 0/25/50 m, rádio 30 m: origem e destino não têm alcance direto, e a entrega exige dois saltos via hub. Testes incluem envio direto/local, duplicação, ausência de vizinhos, destino desconhecido, TTL e opt-in das fábricas.
 - Validação etapa 12: duas execuções independentes de 300 segundos (com/sem Pub/Sub) tiveram **55 uploads e 53 entregas satélite–satélite**, com os mesmos IDs, instantes de criação/entrega e saltos. Isso valida preservação do tráfego original; não são publicações Pub/Sub.
 - Logs `verification-*.log` e `.cache/` são ignorados. PowerShell pode rotular saída stderr normal do logging/unittest como `NativeCommandError` na redireção: conferir exit code e resultado real antes de diagnosticar falha.
@@ -134,8 +134,8 @@ Executar a partir de `tarefa2`:
 ## Retomada mínima
 
 1. Ler este resumo e verificar `git status --short tarefa2`.
-2. Aguardar/seguir a etapa explicitamente solicitada pelo usuário; a próxima prevista é 19.
-3. Para 19, consultar coleta em satellite.py, sensor_identity.py, modelos e cliente Pub/Sub; converter dados coletados em publicações por tópico/paridade e região, sem alterar o tráfego original.
+2. Aguardar/seguir a etapa explicitamente solicitada pelo usuário; a próxima prevista é 20.
+3. Para 20, consultar configuração, fábricas e adaptador: gerar publicações aleatórias do core em T1/T2 com região C e semente reproduzível; não antecipar assinaturas dinâmicas da etapa 21.
 4. Implementar e testar somente a etapa; apresentar resumo curto e parar para revisão/commit.
 
 ## Entrega da etapa 13
@@ -200,3 +200,14 @@ Esta seção substitui as limitações históricas das etapas anteriores quanto 
 - Validação: 126 testes passaram, incluindo cinco novos de identidade, paridade, validação de nomes, binding do main com ordem invertida e coleta real pelo rádio. O teste antigo que esperava sensor_-1 foi corrigido. Testes verificam logs das duas paridades e preservação das contagens; o runner local permanece com 48 testes (não foi necessário repeti-lo nesta etapa).
 - Arquivos: fábrica de sensores, main, template de sensor, esquema de mensagem, configuração, novo sensor_identity.py, novo test_sensor_identity.py, contrato de arquitetura, README e continuidade. Sem commit/staging e sem antecipar a etapa 19.
 - Simulação completa `--pubsub --no-viz` concluiu 300 s sem erros. Não foi repetida a comparação detalhada de métricas da etapa 12.
+
+## Entrega da etapa 19
+
+- Novo `SensorPublicationMixin`, composto apenas nas fábricas de satélite com Pub/Sub. Preserva a coleta original via super e converte cada lote válido por sensor em Publication, somente durante COLLECT_OUT/COLLECT_IN.
+- Payload contém sensor_id e packet_count. Tópico pela paridade; origem é o ID do satélite e região sua face N/S/E/W; created_at é o instante da coleta. ID sensor:<satellite_id>:<contador local> não muda enquanto a mensagem aguarda envio. Não há uma publicação por leitura individual: cada lote recebido contém sua contagem.
+- Fila `_pending_sensor_publications` é local e independente de packets e `_pending` do upload SwCore original. Entrada no contato executa o protocolo original, retomada Pub/Sub e tentativa de envio dos lotes. Sem peer/contato ou retorno False, retém para outro contato. Retorno True remove após envio ao primeiro salto, sem afirmar recebimento; perdas posteriores não geram retry/ACK. Fila pode crescer durante afastamento e conter coletas ao encerrar a simulação.
+- Main fornece apenas o ID real do primeiro PSPeer de PSPEER_SLOTS, obtido de builder.add_node, a cada satélite. É configuração inicial do endpoint, sem registro global de protocolos ou troca direta de stores. A API select_pspeer continua disponível.
+- Sem mudança na coleta, contadores, TTL dos sensores, upload original, movimento ou partida. INFO registra lotes e resultado da submissão. Sem --pubsub não há conversão.
+- Validação: 132 testes passaram, incluindo seis novos de coleta/radio/replicação, paridades, quatro regiões, retenção dos IDs, perda de envio, preservação do upload/departure e configuração do endpoint. Runner local permanece com 48 testes; não foi necessário repeti-lo nesta etapa.
+- Simulação completa com Pub/Sub concluiu 300 s sem erros e registrou 669 operações PUBLISH nos PSPeers a partir das coletas reais. Logs mostram T1/T2 e N/S/E/W. Ainda não há assinantes dinâmicos no cenário padrão; entrega filtrada já tem testes próprios. Não foi repetida a comparação detalhada de métricas da etapa 12.
+- Arquivos: novo sensor_publications.py, fábrica uav.py, main.py, novo test_sensor_publications.py, README e continuidade. Sem commit/staging ou avanço para a etapa 20. Afirmações históricas sobre ausência de geração de publicações dos sensores não descrevem mais o cenário atual.
