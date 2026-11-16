@@ -126,7 +126,7 @@ def main() -> None:
     logging.debug(f"Topology:          {args.topology}")
     logging.debug(f"Routing strategy:  {args.routing_strategy}")
     if args.pubsub:
-        logging.debug("Pub/Sub enabled: star + swcore; sensor collections publish at satellite contacts.")
+        logging.debug("Pub/Sub enabled: star + swcore; sensor contacts and seeded core publication timers.")
 
     viz = not args.no_viz
 
@@ -138,6 +138,7 @@ def main() -> None:
     if args.topology == "star":
         # ── Core hub ───────────────────────────────────────────────────────
         HubClass = make_core_hub(routing=args.routing_strategy, viz=viz, pubsub=args.pubsub)
+        core_protocols = [HubClass]
         logging.debug(f"Hub start: {CORE_HUB_START}")
         builder.add_node(HubClass, CORE_HUB_START)
 
@@ -147,8 +148,14 @@ def main() -> None:
                                     pspeer=args.pubsub and k in PSPEER_SLOTS, pubsub=args.pubsub)
             logging.debug(f"Rim{k} start: {CORE_RIM_STARTS[k]}")
             rim_id = builder.add_node(RimClass, CORE_RIM_STARTS[k])
+            core_protocols.append(RimClass)
             if args.pubsub and k == PSPEER_SLOTS[0]:
                 satellite_pspeer_id = rim_id
+        if args.pubsub:
+            # Scenario construction only: give each client one immutable endpoint.
+            # No protocol instance or shared communication registry is exposed.
+            for protocol in core_protocols:
+                protocol.initial_core_pspeer_id = satellite_pspeer_id
     else:
         # ── Random core UAVs roaming inside the obstacle zone ──────────────
         for i, start in enumerate(random_uav_starts()):

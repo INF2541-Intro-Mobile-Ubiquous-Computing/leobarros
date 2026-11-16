@@ -114,7 +114,7 @@ PUBSUB_TOPICS = ("T1", "T2")
 SENSOR_TOPIC_BY_PARITY = (PUBSUB_TOPICS[1], PUBSUB_TOPICS[0])  # even -> T2; odd -> T1
 PSPEER_SLOTS = (0, 3, 6)            # rim indices, NOT simulator node IDs
 PSPEER_COLOR = (0, 200, 100)        # RGB, distinct from ordinary rim nodes
-PUBSUB_SEED = 2056                 # reserved for per-instance Pub/Sub RNGs
+PUBSUB_SEED = 2056                 # per-instance Pub/Sub RNGs, separate from movement
 PUBSUB_PUBLICATION_INTERVAL = 5.0   # simulated seconds
 PUBSUB_SUBSCRIPTION_INTERVAL = 5.0  # simulated seconds
 

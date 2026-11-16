@@ -101,17 +101,18 @@ All new parameters live in `utils/common/config.py`:
 | Parameter | Default | Meaning |
 |---|---|---|
 | `PUBSUB_ENABLED` | `False` | Default activation; the CLI flag enables this run without mutating the module |
-| `PUBSUB_TOPICS` | `("T1", "T2")` | Topic names reserved for the future Pub/Sub layer |
+| `PUBSUB_TOPICS` | `("T1", "T2")` | Pub/Sub topic names |
 | `PSPEER_SLOTS` | `(0, 3, 6)` | Rim slots, not simulator IDs; gaps of 3, 3 and 2 slots around the eight-node rim |
-| `PUBSUB_SEED` | `2056` | Seed reserved for future per-instance Pub/Sub random generators |
-| `PUBSUB_PUBLICATION_INTERVAL` | `5.0` | Future publication event interval in simulated seconds |
+| `PUBSUB_SEED` | `2056` | Seed for independent core publication generators |
+| `PUBSUB_PUBLICATION_INTERVAL` | `5.0` | Core publication interval in simulated seconds; finite and positive |
 | `PUBSUB_SUBSCRIPTION_INTERVAL` | `5.0` | Future subscription event interval in simulated seconds |
 
 The mode selects star/SwCore and hosts an independent local `PSPeerService`
 on each rim selected by `PSPEER_SLOTS` (default: 0, 3, 6). Each peer logs its
 node ID and slot at INFO and uses `PSPEER_COLOR` (green) in the visualization.
-Exactly three distinct valid rim slots are required. Network requests,
-synchronization and publication/subscription event timers are not implemented yet.
+Exactly three distinct valid rim slots are required. Network requests, peer
+synchronization, sensor publications and core publication timers are implemented;
+dynamic subscription timers remain for stage 21.
 The original mobility and sensor seeds remain unchanged. Setting
 `PUBSUB_ENABLED=True` enables the same selection without the CLI flag.
 
@@ -140,9 +141,27 @@ The adapter processes requests only at PSPeers. FETCH returns eligible history
 over the same radio transport using DELIVER, including an empty result; clients
 receive it through `on_pubsub_delivery(envelope)`. Successful receipt is recorded
 locally and reported by subsequent FETCH requests. There is no automatic peer choice or
-random generation of core publications/subscriptions. Satellite sensor collections
+random generation of subscriptions. Satellite sensor collections
 generate publications as described below. Request/response logs are
 INFO; per-hop paths are DEBUG. `tests/test_pubsub_adapter.py` exercises this path.
+
+### Core publication timers
+
+With `--pubsub`, each hub/rim generates one publication per
+`PUBSUB_PUBLICATION_INTERVAL`, starting one interval after initialization.
+`CorePublicationMixin` uses its own `random.Random` seeded from PUBSUB_SEED and
+node ID with a core-specific prefix. Each event randomly selects T1/T2 and a
+numeric payload value in [0, 1), with region C, current simulation time and an ID
+`core:<node_id>:<sequence>`. Streams reproduce for the same seed and node IDs,
+independently of inter-node event ordering, without using the global RNG.
+
+PSPeers initially publish to themselves; other core nodes receive only the actual
+ID of the first configured PSPeer during scenario construction. No recipient list
+is exposed to the publisher. Generation continues after an unsuccessful submission,
+without buffering or retrying that publication. True means first-hop submission,
+not receipt. Outside Pub/Sub mode these timers are absent, and satellites retain
+their separate sensor-driven publications. `test_core_publications.py` covers
+reproducibility, intervals, opt-in behavior and TF04 over radio with regional filters.
 
 ### Subscription synchronization
 
