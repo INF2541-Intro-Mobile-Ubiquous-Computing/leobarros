@@ -46,7 +46,7 @@ class PSPeerDesignationTests(unittest.TestCase):
                 peer.provider.get_id.return_value = 40 + index
                 peer.initialize()
                 self.assertTrue(peer.base_initialized)
-        self.assertIn('node=40 slot=3', logs.output[0])
+        self.assertIn('PSPEER 40 (slot 3) was initialized.', logs.output[0])
         self.assertIsNot(peers[0].pspeer_service, peers[1].pspeer_service)
         for peer in peers:
             peer.pspeer_service.subscribe(Subscription(10, 'T1', {Region.N}))

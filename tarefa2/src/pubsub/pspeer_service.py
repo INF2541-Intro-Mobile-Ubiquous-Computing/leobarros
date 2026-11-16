@@ -69,6 +69,10 @@ class PSPeerService:
                      and not self._consumption.is_consumed(sub.subscriber_id, sub.topic,
                                                           publication.message_id))
 
+    def get_subscription(self, subscriber_id: int, topic: str) -> Subscription | None:
+        """Return the active filter, including for history-request diagnostics."""
+        return self._subscriptions.get_subscription(subscriber_id, topic)
+
     def fetch(self, subscriber_id: int, topic: str) -> tuple[Publication, ...]:
         """Read eligible, unconsumed history without marking it as delivered."""
         return self._consumption.get_unread(subscriber_id, topic)

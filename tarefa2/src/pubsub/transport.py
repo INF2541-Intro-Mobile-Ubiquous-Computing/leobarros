@@ -22,7 +22,7 @@ class PubSubTransportMixin:
         source = self.provider.get_id()
         packet = dict(msg_type=self.replicate_msg_type, source_id=source, payload=message.to_dict())
         self.provider.send_communication_command(ReplicateBroadcastCommand(json.dumps(packet)))
-        logging.info('[PUBSUB replicate] node=%s message_id=%s action=broadcast',
+        logging.info("[PUBLICATION_BROADCAST] PSPEER %s broadcast message '%s' for replication by other PSPEERs.",
                      source, message.publication.message_id)
 
     def broadcast_pubsub_sync(self, message: SyncEnvelope) -> None:
@@ -30,8 +30,8 @@ class PubSubTransportMixin:
         source = self.provider.get_id()
         packet = dict(msg_type=self.sync_msg_type, source_id=source, payload=message.to_dict())
         self.provider.send_communication_command(SyncBroadcastCommand(json.dumps(packet)))
-        logging.info('[PUBSUB sync] node=%s version=%s action=broadcast count=%s',
-                     source, message.version, len(message.subscriptions))
+        logging.info('[SUBSCRIPTION_BROADCAST] PSPEER %s broadcast %s subscription update(s) to other PSPEERs.',
+                     source, len(message.subscriptions))
 
     def initialize(self) -> None:
         super().initialize()
@@ -63,7 +63,7 @@ class PubSubTransportMixin:
             key = 'pubsub-buffer:' + packet['transport_id']
             self._core_buffer[key] = dict(dest_sat=packet['destination'], pubsub_packet=dict(packet))
             self._pubsub_delivery_state[packet['transport_id']] = 'pending'
-            logging.info('[PUBSUB buffer] node=%s destination=%s state=pending',
+            logging.info('[MESSAGE_BUFFERED] node=%s destination=%s state=pending',
                          self.provider.get_id(), packet['destination'])
 
     def send_pubsub(self, destination: int, message: Envelope) -> bool:

@@ -41,9 +41,17 @@ class PubSubAdapterMixin:
         node = self.provider.get_id()
         subscription = Subscription(node, topic, accepted_regions)
         self._client_subscriptions[topic] = subscription
+        submitted = self._send_request(SubscribeEnvelope(node, subscription))
         pubsub_event(self, 'subscription_requested', topic=topic,
-                     regions=sorted(r.value for r in subscription.accepted_regions), peer=self.selected_pspeer)
-        return self._send_request(SubscribeEnvelope(node, subscription))
+                     regions=sorted(r.value for r in subscription.accepted_regions),
+                     peer=self.selected_pspeer, submitted=submitted,
+                     reason=None if submitted else self._subscription_failure_reason())
+        return submitted
+
+    def _subscription_failure_reason(self) -> str:
+        if self.selected_pspeer is None:
+            return 'no PSPEER has been selected'
+        return 'no usable route to the PSPEER is currently available'
 
     def publish_pubsub(self, publication: Publication) -> bool:
         node = self.provider.get_id()
@@ -75,8 +83,10 @@ class PubSubAdapterMixin:
                 if message.is_push and not publications:
                     return
                 message = DeliverEnvelope(source_id, node, tuple(publications), message.is_push)
-                logging.info('[PUBSUB client] node=%s peer=%s operation=DELIVER count=%s',
-                             node, source_id, len(message.publications))
+                if not publications:
+                    logging.info('[HISTORY_RECEIVED] %s %s received a history response from PSPEER %s with no new matching messages.',
+                                 'Satellite' if hasattr(self, 'sensor_origin_region') else 'Core Node',
+                                 node, source_id)
                 self.on_pubsub_delivery(message)
                 # Only successful application receipt enters the client ledger.
                 for publication in publications:
@@ -99,8 +109,6 @@ class PubSubAdapterMixin:
         elif isinstance(message, SyncEnvelope):
             applied = service.apply_sync(message)
             pubsub_event(self, 'subscription_sync', source=source_id, version=message.version, applied=applied)
-            logging.info('[PUBSUB sync] node=%s source=%s version=%s applied=%s',
-                         node, source_id, message.version, applied)
             return
         elif isinstance(message, PublishEnvelope):
             if message.publication.origin_id != source_id:
@@ -111,8 +119,9 @@ class PubSubAdapterMixin:
                 self._push_publication(message.publication)
         elif isinstance(message, ReplicateEnvelope):
             inserted = service.publish(message.publication)
-            logging.info('[PUBSUB replicate] node=%s source=%s message_id=%s inserted=%s',
-                         node, source_id, message.publication.message_id, inserted)
+            if not inserted:
+                logging.debug("[REPLICA_IGNORED] PSPEER %s received message '%s' from PSPEER %s but already stores it; replica ignored.",
+                             node, message.publication.message_id, source_id)
             if inserted:
                 self._log_publication_stored(message.publication, source_id, replica=True)
                 self._push_publication(message.publication)
@@ -128,15 +137,19 @@ class PubSubAdapterMixin:
                     self.broadcast_pubsub_sync(delta)
             service.report_received(source_id, message.topic, message.received_ids)
             publications = service.fetch(source_id, message.topic)
-            pubsub_event(self, 'history_requested', subscriber=source_id, topic=message.topic,
-                         reported_ids=len(message.received_ids), unread=len(publications))
+            subscription = service.get_subscription(source_id, message.topic)
             submitted = self.send_pubsub(source_id, DeliverEnvelope(node, source_id, publications))
-            logging.info('[PUBSUB peer] node=%s client=%s response=DELIVER count=%s submitted=%s',
-                         node, source_id, len(publications), submitted)
+            pubsub_event(self, 'history_requested', subscriber=source_id, topic=message.topic,
+                         reported_ids=len(message.received_ids), unread=len(publications),
+                         regions=None if subscription is None else
+                         sorted(r.value for r in subscription.accepted_regions), submitted=submitted)
         else:
             return
-        logging.info('[PUBSUB peer] node=%s client=%s operation=%s',
-                     node, source_id, message.operation.value)
+        if isinstance(message, SubscribeEnvelope):
+            log = logging.info if delta is not None else logging.debug
+            log('[SUBSCRIPTION_PROCESSED] PSPEER %s processed a subscription from subscriber %s for topic %s (origin regions: %s).',
+                node, source_id, message.subscription.topic,
+                ', '.join(sorted(r.value for r in message.subscription.accepted_regions)))
 
     def _log_publication_stored(self, publication: Publication, source: int, replica: bool) -> None:
         pubsub_event(self, 'publication_stored', message_id=publication.message_id,
@@ -149,8 +162,12 @@ class PubSubAdapterMixin:
         for subscriber in self.pspeer_service.delivery_subscribers(publication, node):
             submitted = self.send_pubsub(
                 subscriber, DeliverEnvelope(node, subscriber, (publication,), is_push=True))
-            logging.info('[PUBSUB push] peer=%s subscriber=%s message_id=%s submitted=%s',
-                         node, subscriber, publication.message_id, submitted)
+            if submitted:
+                logging.debug("[MESSAGE_PUSH] PSPEER %s submitted message '%s' to subscriber %s.",
+                              node, publication.message_id, subscriber)
+            else:
+                logging.info("[MESSAGE_PUSH_FAILED] PSPEER %s could not submit message '%s' to subscriber %s; no usable route is currently available.",
+                             node, publication.message_id, subscriber)
 
     def on_pubsub_delivery(self, message: DeliverEnvelope) -> None:
         """Client callback for deduplicated push or FETCH results (including empty).

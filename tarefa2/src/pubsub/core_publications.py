@@ -36,7 +36,8 @@ class CorePublicationMixin:
             self._core_publication_rng.choice(PUBSUB_TOPICS), node, Region.C,
             self.provider.current_time(), {'value': self._core_publication_rng.random()})
         submitted = self.publish_pubsub(publication)
-        logging.info('[PUBSUB core] node=%s message_id=%s topic=%s region=C peer=%s submitted=%s',
-                     node, publication.message_id, publication.topic, self.selected_pspeer, submitted)
+        logging.info("[PUBLICATION_SUBMISSION] Core Node %s %s message '%s' for publication on topic %s (origin region: C) to PSPEER %s.",
+                     node, 'submitted' if submitted else 'could not submit',
+                     publication.message_id, publication.topic, self.selected_pspeer)
         self.provider.schedule_timer(self.core_publication_timer,
                                      self.provider.current_time() + self._core_publication_interval)

@@ -310,12 +310,39 @@ No dependency or scheduler modifications were made.
 
 Set `LOG_LEVEL` in `utils/common/config.py` before starting a run:
 
-`[PUBSUB event]` records contain JSON with `event`, `node`, `time` and event-specific
-IDs, topic, regions and timestamps. They cover subscription requests/synchronization,
-peer storage, actual application receipt, history requests and satellite contacts.
-Publication payload contents are omitted. Custom Python logging handlers can read
-the same dictionary from `record.pubsub_event`, independent of console wrapping.
-Existing detailed logs and their levels remain available.
+Subscription requests/synchronization, peer storage and history requests use
+human-readable INFO messages. Duplicate replica-storage and synchronization lines
+are consolidated into one event each. Submission means acceptance by the transport,
+not confirmed destination receipt; failed submissions are explicitly identified.
+SUBSCRIBE processing includes the topic and accepted origin regions.
+Subscription creation and submission share one message, including the submission
+result. Generic PUBLISH and FETCH completion lines are omitted. Local clients are
+identified as Core Node or Satellite; peers refer to remote clients as subscribers
+when their role is not available. Versions and receipt-ID counts remain in the
+structured events rather than the human-readable text.
+Pub/Sub INFO messages start with an event keyword, such as
+`[SUBSCRIPTION_REQUEST]`, `[PUBLICATION_BROADCAST]`, `[SUBSCRIPTION_BROADCAST]`
+or `[MESSAGE_RECEIVED]`. Each accepted publication has one textual
+`[MESSAGE_RECEIVED]` line naming its origin, forwarding peer, topic, origin region
+and accepted subscription regions. Batch receipt summaries are omitted;
+`[HISTORY_RECEIVED]` reports history responses with no new matching messages.
+Successful push submissions, ignored replicas and unchanged subscriptions use
+DEBUG. Failed push submissions remain visible at INFO. Subscription submission
+failures include the reason; disconnected satellites retain their latest filters
+locally and resubmit them when contact starts.
+History lookup and response submission share one `[HISTORY_RESPONSE]` message,
+including the topic, the active subscription's origin-region filter, the message
+count and whether submission succeeded. A missing subscription is stated explicitly.
+The structured `history_requested` event is retained with `regions` and `submitted`
+fields and is emitted after the response submission attempt.
+
+Structured events retain `event`, `node`, `time` and event-specific IDs, topics,
+regions and timestamps. Custom Python logging handlers can read the dictionary
+from `record.pubsub_event` or its JSON serialization from `record.pubsub_event_json`,
+independent of the human-readable console text. Application-receipt and satellite
+contact events also use human-readable text. Publication payload contents are omitted.
+`LEITURA_LOG.md` contains an annotated excerpt using the updated messages; merged
+comments retain their original numbers (for example, 9/10).
 
 ```python
 LOG_LEVEL = "INFO"  # default; keeps execution start/end messages

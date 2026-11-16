@@ -1,5 +1,4 @@
 """Seeded topic/filter changes; offline satellites keep their latest local filters."""
-import logging
 import math
 import random
 
@@ -29,8 +28,5 @@ class DynamicSubscriptionMixin:
         submitted = self.subscribe_pubsub(topic, accepted)
         if submitted:
             self.fetch_pubsub(topic)
-        logging.info('[PUBSUB subscription] node=%s topic=%s regions=%s peer=%s submitted=%s',
-                     self.provider.get_id(), topic, ','.join(sorted(r.value for r in accepted)),
-                     self.selected_pspeer, submitted)
         self.provider.schedule_timer(self.subscription_timer,
                                      self.provider.current_time() + self._subscription_interval)

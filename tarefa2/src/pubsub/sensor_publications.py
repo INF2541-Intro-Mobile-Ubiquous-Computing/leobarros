@@ -49,7 +49,7 @@ class SensorPublicationMixin:
                 topic_for_sensor(sensor_id), self.provider.get_id(), Region(self.sensor_origin_region),
                 self.provider.current_time(), {'sensor_id': sensor_id, 'packet_count': count})
             self._pending_sensor_publications[publication.message_id] = publication
-            logging.info('[PUBSUB sensor] node=%s message_id=%s sensor_id=%s topic=%s region=%s count=%s queued',
+            logging.info("[MESSAGE_QUEUED] Satellite %s queued message '%s' after receiving data from sensor %s for publication on topic %s (origin region: %s; data packets received: %s).",
                          self.provider.get_id(), publication.message_id, sensor_id,
                          publication.topic, publication.origin_region.value, count)
 
@@ -65,5 +65,6 @@ class SensorPublicationMixin:
             submitted = self.publish_pubsub(publication)
             if submitted:
                 self._pending_sensor_publications.pop(message_id)
-            logging.info('[PUBSUB sensor] node=%s message_id=%s peer=%s submitted=%s',
-                         self.provider.get_id(), message_id, self.selected_pspeer, submitted)
+            logging.info("[PUBLICATION_SUBMISSION] Satellite %s %s message '%s' to PSPEER %s.",
+                         self.provider.get_id(), 'submitted' if submitted else 'could not submit',
+                         message_id, self.selected_pspeer)

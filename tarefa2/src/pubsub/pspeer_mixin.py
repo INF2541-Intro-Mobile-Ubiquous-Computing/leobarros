@@ -11,5 +11,5 @@ class PSPeerMixin:
     def initialize(self) -> None:
         super().initialize()
         self.pspeer_service = PSPeerService()
-        logging.info('[PSPEER] node=%s slot=%s initialized',
+        logging.info('[PSPEER_INITIALIZED] PSPEER %s (slot %s) was initialized.',
                      self.provider.get_id(), self.pspeer_slot)

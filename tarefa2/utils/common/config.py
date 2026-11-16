@@ -110,7 +110,7 @@ RANDOM_Y_RANGE = (OBSTACLE_ZONE.y_min, OBSTACLE_ZONE.y_max)
 # ---------------------------------------------------------------------------
 # Pub/Sub opt-in configuration (event generation is not implemented yet)
 # ---------------------------------------------------------------------------
-PUBSUB_ENABLED = False             # default; --pubsub enables it for one run
+PUBSUB_ENABLED = True             # default; --pubsub enables it for one run
 PUBSUB_TOPICS = ("T1", "T2")
 SENSOR_TOPIC_BY_PARITY = (PUBSUB_TOPICS[1], PUBSUB_TOPICS[0])  # even -> T2; odd -> T1
 PSPEER_SLOTS = (0, 3, 6)            # rim indices, NOT simulator node IDs
