@@ -32,6 +32,7 @@ from src.pubsub.adapter import PubSubAdapterMixin
 from src.pubsub.satellite_client import PubSubSatelliteMixin
 from src.pubsub.sensor_publications import SensorPublicationMixin
 from src.pubsub.core_publications import CorePublicationMixin
+from src.pubsub.dynamic_subscriptions import DynamicSubscriptionMixin
 from utils.common.config import PSPEER_COLOR
 
 
@@ -47,7 +48,8 @@ def _routing_mixin(name: str, pubsub: bool = False) -> type:
     if pubsub:
         if name != 'swcore':
             raise ValueError('Pub/Sub transport requires swcore routing')
-        class PubSubSWCore(CorePublicationMixin, PubSubAdapterMixin, PubSubTransportMixin, SWCoreMixin):
+        class PubSubSWCore(DynamicSubscriptionMixin, CorePublicationMixin, PubSubAdapterMixin,
+                           PubSubTransportMixin, SWCoreMixin):
             pass
         return PubSubSWCore
     try:
@@ -194,7 +196,7 @@ def make_satellite(face: str, viz: bool = False, swcore: bool = False, pubsub: b
     if pubsub:
         if not swcore:
             raise ValueError('Satellite Pub/Sub requires swcore')
-        class PubSubSat(SensorPublicationMixin, PubSubSatelliteMixin, BaseSat):
+        class PubSubSat(DynamicSubscriptionMixin, SensorPublicationMixin, PubSubSatelliteMixin, BaseSat):
             sensor_origin_region = face
             initial_pspeer_id = pspeer_id
         BaseSat = PubSubSat

@@ -17,6 +17,14 @@ class PubSubModelsTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 FetchEnvelope(1, 1, 'T1', invalid)
 
+    def test_fetch_can_carry_matching_filter_for_atomic_history_query(self):
+        subscription = Subscription(1, 'T1', {'N', 'C'})
+        message = FetchEnvelope(1, 1, 'T1', ('received',), subscription)
+        self.assertEqual(envelope_from_json(message.to_json()), message)
+        for invalid in (Subscription(2, 'T1', {'N'}), Subscription(1, 'T2', {'N'})):
+            with self.assertRaises(ValueError):
+                FetchEnvelope(1, 1, 'T1', (), invalid)
+
     def setUp(self):
         self.publication = Publication('uav-12:1', 'T1', 12, Region.N, 2.5,
                                        {'sensor_id': 3, 'values': [1, None, True]})

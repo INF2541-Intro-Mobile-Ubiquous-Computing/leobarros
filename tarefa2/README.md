@@ -105,14 +105,14 @@ All new parameters live in `utils/common/config.py`:
 | `PSPEER_SLOTS` | `(0, 3, 6)` | Rim slots, not simulator IDs; gaps of 3, 3 and 2 slots around the eight-node rim |
 | `PUBSUB_SEED` | `2056` | Seed for independent core publication generators |
 | `PUBSUB_PUBLICATION_INTERVAL` | `5.0` | Core publication interval in simulated seconds; finite and positive |
-| `PUBSUB_SUBSCRIPTION_INTERVAL` | `5.0` | Future subscription event interval in simulated seconds |
+| `PUBSUB_SUBSCRIPTION_INTERVAL` | `5.0` | Dynamic subscription interval; finite and positive |
 
 The mode selects star/SwCore and hosts an independent local `PSPeerService`
 on each rim selected by `PSPEER_SLOTS` (default: 0, 3, 6). Each peer logs its
 node ID and slot at INFO and uses `PSPEER_COLOR` (green) in the visualization.
 Exactly three distinct valid rim slots are required. Network requests, peer
-synchronization, sensor publications and core publication timers are implemented;
-dynamic subscription timers remain for stage 21.
+synchronization, sensor publications, core publication timers and dynamic
+subscription timers are implemented.
 The original mobility and sensor seeds remain unchanged. Setting
 `PUBSUB_ENABLED=True` enables the same selection without the CLI flag.
 
@@ -140,8 +140,8 @@ and `fetch_pubsub(topic)`. Without a selected peer these calls return `False`.
 The adapter processes requests only at PSPeers. FETCH returns eligible history
 over the same radio transport using DELIVER, including an empty result; clients
 receive it through `on_pubsub_delivery(envelope)`. Successful receipt is recorded
-locally and reported by subsequent FETCH requests. There is no automatic peer choice or
-random generation of subscriptions. Satellite sensor collections
+locally and reported by subsequent FETCH requests. There is no automatic peer discovery.
+Satellite sensor collections
 generate publications as described below. Request/response logs are
 INFO; per-hop paths are DEBUG. `tests/test_pubsub_adapter.py` exercises this path.
 
@@ -162,6 +162,29 @@ without buffering or retrying that publication. True means first-hop submission,
 not receipt. Outside Pub/Sub mode these timers are absent, and satellites retain
 their separate sensor-driven publications. `test_core_publications.py` covers
 reproducibility, intervals, opt-in behavior and TF04 over radio with regional filters.
+
+### Dynamic subscriptions
+
+In Pub/Sub mode every core node and satellite runs `DynamicSubscriptionMixin`.
+Starting after one `PUBSUB_SUBSCRIPTION_INTERVAL`, each event randomly chooses a
+topic and a nonempty subset of N/S/E/W/C. It replaces only that topic's filter,
+so both T1 and T2 can remain subscribed simultaneously. The RNG uses PUBSUB_SEED,
+node ID and a subscriptions-specific prefix, independent of publication/mobility
+streams. No timers are installed outside Pub/Sub mode.
+
+Core nodes send SUBSCRIBE followed by FETCH when submission succeeds. Satellites
+do the same during EXCHANGE; while away they retain the latest local filter per
+topic and send it on contact through the existing resume path. Intermediate
+offline filters are superseded, not queued as separate network updates.
+
+FETCH includes the current local subscription along with received IDs. The peer
+validates its topic/subscriber, applies the filter and queries history in one
+request. This handles FETCH arriving before SUBSCRIBE at the same simulated time
+or after a lost SUBSCRIBE, without introducing an ACK. Older wire requests without
+the optional filter retain their prior behavior. Historical delivery follows the
+new filter and excludes confirmed IDs; changing one filter preserves consumption
+and the other topic's subscription. `test_dynamic_subscriptions.py` covers TF05,
+history, filter changes, reproducibility and offline contacts.
 
 ### Subscription synchronization
 
@@ -222,7 +245,7 @@ deliveries are accepted only in that state. The core uses SwCore's `direct`/`hop
 routes learned through its original connect/disconnect messages. Pub/Sub does not
 change movement, sensor uploads, departure timing, or the original dock deliveries.
 Existing subscriptions are resent and FETCH runs automatically upon contact.
-No random subscription generation or change to departure timing is added.
+Dynamic filters are generated separately; departure timing is unchanged.
 
 Losses and stale subscription replicas can cause missed delivery. Selecting a
 different peer resends known subscriptions and fetches unread history (satellites

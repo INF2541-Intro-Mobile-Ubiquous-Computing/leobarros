@@ -96,6 +96,7 @@ class FetchEnvelope(Envelope):
     subscriber_id: int
     topic: str
     received_ids: tuple[str, ...] = field(default_factory=tuple)
+    subscription: Subscription | None = None
     operation: ClassVar[Operation] = Operation.FETCH
 
     def __post_init__(self) -> None:
@@ -104,6 +105,11 @@ class FetchEnvelope(Envelope):
         if any(not isinstance(item, str) or not item for item in self.received_ids):
             raise ValueError('received_ids must contain nonempty strings')
         object.__setattr__(self, 'received_ids', tuple(sorted(set(self.received_ids))))
+        if self.subscription is not None and (
+                not isinstance(self.subscription, Subscription)
+                or self.subscription.subscriber_id != self.subscriber_id
+                or self.subscription.topic != self.topic):
+            raise ValueError('FETCH subscription must match subscriber and topic')
 
 
 @dataclass(frozen=True)
@@ -160,6 +166,8 @@ def envelope_from_dict(data: dict) -> Envelope:
             fields["publication"] = Publication(**fields["publication"])
             return ReplicateEnvelope(**fields)
         if operation == Operation.FETCH:
+            if fields.get('subscription') is not None:
+                fields['subscription'] = Subscription(**fields['subscription'])
             return FetchEnvelope(**fields)
         if operation == Operation.DELIVER:
             fields["publications"] = tuple(Publication(**item) for item in fields["publications"])

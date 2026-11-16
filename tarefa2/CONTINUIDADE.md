@@ -1,6 +1,6 @@
 ﻿# Continuidade do projeto Tarefa 2
 
-Atualizado em 15/11/2026, após implementar a etapa 20. Leia este arquivo primeiro na nova conversa; depois, apenas os trechos de código relevantes à etapa autorizada. Este resumo não autoriza iniciar outra etapa automaticamente.
+Atualizado em 15/11/2026, após implementar a etapa 21. Leia este arquivo primeiro na nova conversa; depois, apenas os trechos de código relevantes à etapa autorizada. Este resumo não autoriza iniciar outra etapa automaticamente.
 
 ## Regras do usuário e modo econômico
 
@@ -31,9 +31,9 @@ Atualizado em 15/11/2026, após implementar a etapa 20. Leia este arquivo primei
 
 ## Estado atual e revisão pendente
 
-**Etapas 01–20 implementadas e testadas. Próxima: 21, somente após solicitação do usuário.** Os PSPeers sincronizam assinaturas, replicam publicações e enviam DELIVER individual aos assinantes elegíveis. Satélites conectados têm cliente Pub/Sub opt-in. Coletas reais de sensores agora geram publicações nos satélites; o core também gera publicações aleatórias com região C; ainda não há assinaturas espontâneas.
+**Etapas 01–21 implementadas e testadas. Próxima: 22, somente após solicitação do usuário.** Os PSPeers sincronizam assinaturas, replicam publicações e enviam DELIVER individual aos assinantes elegíveis. Satélites conectados têm cliente Pub/Sub opt-in. Coletas reais de sensores agora geram publicações nos satélites; o core também gera publicações aleatórias com região C; core e satélites agora geram assinaturas dinâmicas reproduzíveis.
 
-Na entrada da etapa 20, `git status --short tarefa2` estava limpo. As mudanças desta etapa ficam para revisão e commit do usuário; nenhum comando de staging ou commit foi executado pelo agente.
+Na entrada da etapa 21, `git status --short tarefa2` estava limpo. As mudanças desta etapa ficam para revisão e commit do usuário; nenhum comando de staging ou commit foi executado pelo agente.
 
 | Etapas concluídas | Resultado |
 | --- | --- |
@@ -73,7 +73,7 @@ O envelope externo `pubsub_core` contém `transport_id` por origem/contador, `so
 
 ## Parâmetros e logs
 
-Em `utils/common/config.py`: `PUBSUB_ENABLED=False`, tópicos T1/T2, `PSPEER_SLOTS=(0,3,6)` (índices de rims, nunca IDs dinâmicos), `PSPEER_COLOR=(0,200,100)`, `PUBSUB_SEED=2056`, intervalos de publicação/assinatura de 5 s e `PUBSUB_TRANSPORT_MAX_HOPS=8`. Semente e intervalo de publicação já geram eventos do core; intervalo de assinatura permanece reservado à etapa 21. Validam-se três slots distintos, inteiros e dentro da borda.
+Em `utils/common/config.py`: `PUBSUB_ENABLED=False`, tópicos T1/T2, `PSPEER_SLOTS=(0,3,6)` (índices de rims, nunca IDs dinâmicos), `PSPEER_COLOR=(0,200,100)`, `PUBSUB_SEED=2056`, intervalos de publicação/assinatura de 5 s e `PUBSUB_TRANSPORT_MAX_HOPS=8`. Semente e intervalos já geram publicações do core e assinaturas dinâmicas de core/satélites. Validam-se três slots distintos, inteiros e dentro da borda.
 
 Por pedido do usuário, todos os logs detalhados preexistentes da aplicação foram movidos para DEBUG. `LOG_LEVEL='INFO'` mantém início/fim/tempo total e identificação dos três PSPeers. Novos logs INFO de aplicação poderão ser acrescentados conforme as etapas pedirem, sem restaurar o ruído antigo.
 
@@ -91,8 +91,8 @@ Por pedido do usuário, todos os logs detalhados preexistentes da aplicação fo
 | 18 — concluída | Identificação única/estável de sensores; par→T2, ímpar→T1, preservando coleta original. Testar/logar ambas as paridades. |
 | 19 — concluída | Converter coleta dos satélites em publicações reais por tópico/paridade e região N/S/E/W; armazenar durante afastamento e transmitir no contato. |
 | 20 — concluída | Timers de publicações aleatórias do core em T1/T2, região C, semente reproduzível; entrega conforme filtro. TF04. |
-| **21 — próxima** | Assinaturas dinâmicas de core/satélites, tópico e subconjunto de regiões por semente; satélites enviam no contato; permitir ambos os tópicos. Histórico elegível e TF05. |
-| 22 | Cenário integrado com três peers, eventos dinâmicos, filtros, sincronização, histórico e reconexão. Logs estruturados. Executar ciclo relevante de todos os satélites. |
+| 21 — concluída | Assinaturas dinâmicas de core/satélites, tópico e subconjunto de regiões por semente; satélites enviam no contato; permitir ambos os tópicos. Histórico elegível e TF05. |
+| **22 — próxima** | Cenário integrado com três peers, eventos dinâmicos, filtros, sincronização, histórico e reconexão. Logs estruturados. Executar ciclo relevante de todos os satélites. |
 | 23 | Automatizar TF01–TF06 usando comunicação real simulada, não apenas chamadas locais. Executar isolados/juntos; TF06 verifica IDs, não só contagem. |
 | 24 | Métricas por (publicação, assinante): entregas, latência, saltos; separar controle, sincronização, retransmissões SwCore e duplicatas. Validar denominadores em cenários pequenos. |
 | 25 | Runner reproduzível com semente/duração/parâmetros e exportação CSV/JSON; repetir sementes e comparar resultados. Métricas definitivas dependem do professor. |
@@ -125,7 +125,7 @@ Executar a partir de `tarefa2`:
 ../.venv/Scripts/python.exe -B -m src.main --no-viz --topology star --routing-strategy swcore
 ```
 
-- Último resultado: **138 testes passaram**, incluindo seis novos da etapa 20; suíte local: **48 testes**, runner verifica que nenhum módulo `gradysim` foi importado.
+- Último resultado: **146 testes passaram**, incluindo oito novos da etapa 21; suíte local: **49 testes**, runner verifica que nenhum módulo `gradysim` foi importado.
 - Transporte testado com três nós em posições 0/25/50 m, rádio 30 m: origem e destino não têm alcance direto, e a entrega exige dois saltos via hub. Testes incluem envio direto/local, duplicação, ausência de vizinhos, destino desconhecido, TTL e opt-in das fábricas.
 - Validação etapa 12: duas execuções independentes de 300 segundos (com/sem Pub/Sub) tiveram **55 uploads e 53 entregas satélite–satélite**, com os mesmos IDs, instantes de criação/entrega e saltos. Isso valida preservação do tráfego original; não são publicações Pub/Sub.
 - Logs `verification-*.log` e `.cache/` são ignorados. PowerShell pode rotular saída stderr normal do logging/unittest como `NativeCommandError` na redireção: conferir exit code e resultado real antes de diagnosticar falha.
@@ -134,8 +134,8 @@ Executar a partir de `tarefa2`:
 ## Retomada mínima
 
 1. Ler este resumo e verificar `git status --short tarefa2`.
-2. Aguardar/seguir a etapa explicitamente solicitada pelo usuário; a próxima prevista é 21.
-3. Para 21, consultar configuração, adaptador, gerador do core e cliente de satélite; implementar assinaturas dinâmicas por instância/semente, filtros e histórico elegível sem alterar o fluxo de publicação já existente.
+2. Aguardar/seguir a etapa explicitamente solicitada pelo usuário; a próxima prevista é 22.
+3. Para 22, preparar o cenário integrado com três peers, publicações, filtros, sincronização, histórico e reconexão; executar ciclo relevante de todos os satélites e validar logs, sem antecipar métricas definitivas ou runner das etapas posteriores.
 4. Implementar e testar somente a etapa; apresentar resumo curto e parar para revisão/commit.
 
 ## Entrega da etapa 13
@@ -222,3 +222,15 @@ Esta seção substitui as limitações históricas das etapas anteriores quanto 
 - Validação: 138 testes passaram, seis novos de geração determinística, independência do RNG global, intervalos/IDs/região, configuração inválida, composição opt-in e TF04 (e filtro incompatível) via rádio. Runner local permanece com 48 testes; não foi necessário repeti-lo nesta etapa.
 - Simulação completa com Pub/Sub concluiu 300 s sem erros e registrou 540 publicações geradas pelos nove nós do core (60 por nó), além das publicações dos sensores. Cenário padrão ainda não possui assinaturas espontâneas; entrega filtrada foi exercitada nos testes. Sem repetição da comparação detalhada de métricas da etapa 12.
 - Arquivos: novo core_publications.py, composição uav.py, configuração inicial main.py, comentário de semente em config.py, novo test_core_publications.py, README e continuidade. Sem commit/staging ou início da etapa 21.
+
+## Entrega da etapa 21
+
+- Novo `DynamicSubscriptionMixin` somente nas fábricas Pub/Sub de core e satélites. Timer pubsub_subscribe usa PUBSUB_SUBSCRIPTION_INTERVAL, começando após um intervalo; rejeita valores não positivos/não finitos.
+- RNG por instância com seed textual PUBSUB_SEED:subscriptions:<node_id>, separado do RNG de publicações e do RNG global. A cada evento escolhe T1/T2 e subconjunto não vazio de N/S/E/W/C. Preserva a assinatura do outro tópico; ambos podem coexistir.
+- Core envia SUBSCRIBE e, se submetido, FETCH do histórico. Satélite em EXCHANGE faz o mesmo; afastado mantém o último filtro por tópico em `_client_subscriptions`, sem transmitir. A retomada existente envia os filtros atuais e consulta histórico no contato; filtros intermediários offline são substituídos.
+- Correção necessária encontrada na validação: eventos de rádio no mesmo instante podem entregar FETCH antes de SUBSCRIBE. `FetchEnvelope.subscription` opcional carrega o filtro local vigente, validando tópico e assinante. Peer aplica esse filtro e consulta o histórico na mesma requisição, sem ACK adicional. Campo ausente mantém compatibilidade. FETCH também recupera uma assinatura cujo SUBSCRIBE se perdeu; recibos/consumo continuam preservados.
+- Logs INFO registram nó, tópico, regiões ordenadas, peer e submissão. Nenhuma alteração nos geradores de publicações, mobilidade ou partida.
+- Validação: 146 testes gerais e 49 locais passaram (locais são subconjunto). Oito novos: sete testes de assinaturas (semente, filtros, coexistência de tópicos, intervalos, opt-in, TF05/histórico, contato offline e chegada sem SUBSCRIBE, agrupados em sete métodos) e um de serialização/validação de FETCH com filtro. Teste antigo de perda de assinatura atualizado para a recuperação pelo FETCH.
+- Simulação completa de 300 s concluída sem erros após a correção de ordem, com 780 eventos de assinatura (60 por cada um dos 13 UAVs). A primeira execução foi repetida porque o contrato FETCH foi corrigido durante a validação. Não foi executada a etapa 22 nem repetida a comparação detalhada de métricas da etapa 12.
+- Limites mantidos: submissão não confirma entrega; SYNC/REPLICATE podem se perder; consumo não é globalmente instantâneo. Filtros locais são os mais recentes do cliente; não há ordenação causal adicional de múltiplas alterações do cliente em trânsito com atrasos arbitrários.
+- Arquivos: novo dynamic_subscriptions.py, composição uav.py, modelos/adapter para FETCH com filtro, novo test_dynamic_subscriptions.py, testes de modelos/adapter, README e continuidade. Sem commit/staging ou início da etapa 22. Descrições históricas sobre ausência de assinaturas espontâneas não representam mais o cenário atual.

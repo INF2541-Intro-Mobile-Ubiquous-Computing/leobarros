@@ -93,10 +93,11 @@ class PubSubAdapterTests(unittest.TestCase):
         self.assertEqual(client.deliveries, [])
         self.assertEqual(destination.transmissions, [])
 
-    def test_lost_subscription_returns_empty_fetch_without_retry(self):
+    def test_lost_subscription_is_recovered_by_fetch_carrying_current_filter(self):
         client, hub, peer = self.run_network(early=True)
         self.assertFalse(client.results[0])
-        self.assertEqual([m.publications for m in client.deliveries], [(), ()])
+        self.assertEqual([[p.message_id for p in m.publications] for m in client.deliveries],
+                         [['eligible'], []])
 
     def test_mismatched_identity_and_sync_are_ignored(self):
         client, hub, peer = self.run_network(invalid=True)

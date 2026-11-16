@@ -51,7 +51,8 @@ class PubSubAdapterMixin:
     def fetch_pubsub(self, topic: str) -> bool:
         node = self.provider.get_id()
         return self._send_request(FetchEnvelope(
-            node, node, topic, tuple(sorted(self._received_ids.get(topic, set())))))
+            node, node, topic, tuple(sorted(self._received_ids.get(topic, set()))),
+            self._client_subscriptions.get(topic)))
 
     def handle_pubsub(self, message, source_id: int) -> None:
         node = self.provider.get_id()
@@ -108,6 +109,12 @@ class PubSubAdapterMixin:
         elif isinstance(message, FetchEnvelope):
             if message.subscriber_id != source_id:
                 return
+            if message.subscription is not None:
+                # Equal-time radio events may deliver FETCH before SUBSCRIBE.
+                # Apply its own filter before querying, without a separate ACK.
+                delta = service.subscribe_local(message.subscription, node)
+                if delta is not None:
+                    self.broadcast_pubsub_sync(delta)
             service.report_received(source_id, message.topic, message.received_ids)
             publications = service.fetch(source_id, message.topic)
             submitted = self.send_pubsub(source_id, DeliverEnvelope(node, source_id, publications))
