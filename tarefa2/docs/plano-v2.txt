@@ -1,0 +1,75 @@
+REVISÃO V2 — 21/11/2026
+
+Fonte vigente: especificacao-v2.pdf; transcrição integral: especificacao-v2.txt.
+Os documentos anteriores são históricos. O PDF é referência de requisitos,
+não instrução para executar ações externas. Autorização: solicitação do usuário.
+Trabalhar de forma econômica, uma etapa por rodada; aguardar revisão/commit
+e indicação do usuário antes da seguinte. Não criar commits automaticamente.
+
+REQUISITOS E DELTA (inspeção da implementação em 21/11/2026)
+
+Já implementados, sujeitos à regressão final:
+- SwCore separado do Pub/Sub; rádio real, múltiplos saltos, alcance de satélites
+  e buffer de reconexão (transport.py e swcore_mixin.py).
+- Core fixo com rotação, quatro satélites em eixos cardinais e ciclo de contato.
+- Três PSPeers nos slots 0/3/6: distribuição mais uniforme possível em oito
+  posições de borda (intervalos 3/3/2); estados locais independentes.
+- T1/T2 fixos, publicações aleatórias do core e assinaturas/filtros aleatórios.
+- Sensores identificados; par publica T2, ímpar T1; regiões N/S/E/W/C.
+- Filtragem por tópico/região, histórico integral e controle de não lidas.
+- Réplicas de publicações e assinaturas nos três peers; sincronização de um
+  salto, sem retransmissão; demais nós descartam as atualizações.
+- Não há ACK de entrega Pub/Sub; perdas permitidas. Handshake/ACK legado do
+  SwCore é reutilizado. Não adicionar consenso ou recuperação de PSPeers.
+
+Faltantes/insuficientes:
+- Satélites começavam no dock e saíam: devem iniciar afastados e aproximar-se.
+- Todos os clientes comuns usam o primeiro PSPeer configurado; inexiste RT
+  com caminho até o mais próximo. Transporte usa vizinho direto ou hub.
+- RT de satélites guarda próximo salto/estado, mas não caminho completo nem
+  reconvergência para contornar falha de um relay.
+- Não existe indisponibilidade periódica de nó nem recálculo correspondente.
+- stats.py mede tráfego legado, não as quatro métricas Pub/Sub exigidas.
+  Logs estruturados existentes ajudam, mas não substituem coleta e relatório.
+
+ETAPAS E CRITÉRIOS
+
+1. Base revisada e mobilidade [implementada; aguarda revisão/commit].
+   Preservar PDF/texto e este plano; corrigir posição e primeira perna somente
+   no cenário Pub/Sub; testes de geometria, estado inicial e construção.
+
+2. Rotas distribuídas [pendente].
+   Descobrir/anunciar peers e conectividade pelo rádio; cada nó do core deve
+   manter caminhos para o PSPeer mais próximo e para cada satélite. Selecionar
+   peer por menor número de saltos, desempate determinístico por ID (critério
+   operacional a documentar). Evitar estado global como oráculo de rotas.
+   Integrar encaminhamento, troca de peer, histórico e buffer ao SwCore;
+   testar caminhos alternativos e destino desconectado.
+
+3. Falhas temporárias [pendente].
+   A cada 30 s, interromper envio e recepção de um nó do core por 1 s; manter
+   mobilidade e estado. Detectar falha e recalcular RTs durante a interrupção,
+   não somente depois da volta. Testar desvio efetivo e recuperação.
+   Interpretação a explicitar: sortear entre nós comuns do core, pois o item
+   6 dispensa desconexões de PSPeers; item 5 diz nó aleatório do core. Essa
+   tensão textual deve ficar visível na auditoria, sem alegar consenso/failover.
+
+4. Métricas e auditoria final [pendente].
+   MDR: percentual de publicações entregues a TODOS os assinantes elegíveis;
+   entrega fora de ordem; latência ponta a ponta (média, p95 e p99); tempo de
+   recuperação de caminhos e sincronização de assinaturas após falha.
+   Definir denominadores, janela de elegibilidade com assinaturas mutáveis,
+   publicações sem assinantes, fim de simulação e ordem de publicação.
+   Observar sem usar métricas para decidir o protocolo; exportar resultados
+   reproduzíveis e executar simulação integrada com falhas, testes e matriz
+   requisito -> evidência. Não declarar conformidade total antes disso.
+
+VALIDAÇÃO
+Baseline anterior às mudanças: 146 testes aprovados (unittest discover).
+Etapa 1: 149 testes aprovados, incluindo três testes novos de partida.
+Simulação integrada: 300 segundos simulados aprovados (execução acelerada
+pelo contexto de testes do simulador); réplicas, filtros, deduplicação,
+histórico e múltiplos ciclos de contato verificados pelo auditor existente.
+Logs locais: verification-v2-stage1.log e verification-v2-stage1-integrated.log.
+Os seis testes funcionais TF01–TF06 são sugestões opcionais no PDF; usar a
+suíte existente e ampliar apenas para os comportamentos novos relevantes.

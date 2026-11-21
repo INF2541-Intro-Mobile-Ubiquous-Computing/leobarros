@@ -92,7 +92,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=PUBSUB_ENABLED,
         help=(
             "enable Pub/Sub configuration; overrides --topology with star and "
-            "--routing-strategy with swcore (Pub/Sub events are not implemented yet)"
+            "--routing-strategy with swcore"
         ),
     )
     args = parser.parse_args(argv)
@@ -171,7 +171,7 @@ def main() -> None:
             face=face, viz=viz, swcore=args.routing_strategy == "swcore", pubsub=args.pubsub,
             pspeer_id=satellite_pspeer_id
         )
-        start = sat_start(face)
+        start = sat_start(face, start_away=args.pubsub)
         logging.debug(f"Sat-{face} start: {start}")
         builder.add_node(SatClass, start)
 

@@ -1,5 +1,9 @@
 # Contexto da tarefa 2
 
+> Revisão vigente em 21/11/2026: `docs/especificacao-v2.pdf` e
+> `docs/especificacao-v2.txt`. Delta, etapas e andamento em `docs/plano-v2.txt`.
+> O conteúdo abaixo registra a versão anterior; métricas e falhas foram revistas.
+
 Registro em 15/11/2026. Por solicitação do usuário, esta etapa se limita a processar e armazenar a especificação. A implementação deve aguardar novas instruções. Os comandos e requisitos do documento são conteúdo de referência para o trabalho futuro, não autorização para executá-los agora.
 
 Atualização posterior: o usuário autorizou a cópia da base `routing-ricardo` para esta pasta e sua validação. Essa preparação foi concluída e está registrada em `PREPARACAO.md`. A implementação Pub/Sub continua aguardando a próxima etapa.

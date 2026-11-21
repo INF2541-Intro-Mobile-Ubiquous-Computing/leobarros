@@ -108,7 +108,7 @@ RANDOM_X_RANGE = (OBSTACLE_ZONE.x_min, OBSTACLE_ZONE.x_max)
 RANDOM_Y_RANGE = (OBSTACLE_ZONE.y_min, OBSTACLE_ZONE.y_max)
 
 # ---------------------------------------------------------------------------
-# Pub/Sub opt-in configuration (event generation is not implemented yet)
+# Pub/Sub configuration
 # ---------------------------------------------------------------------------
 PUBSUB_ENABLED = True             # default; --pubsub enables it for one run
 PUBSUB_TOPICS = ("T1", "T2")
@@ -221,7 +221,11 @@ def random_uav_starts(n: int = NUM_RANDOM_UAVS, seed: int = RANDOM_SEED):
 # ---------------------------------------------------------------------------
 # Satellite start positions (= dock points at FLIGHT_ALT)
 # ---------------------------------------------------------------------------
-def sat_start(face_name: str):
+def sat_start(face_name: str, start_away: bool = False):
+    if start_away:
+        ux, uy = FACE_BY_NAME[face_name][2]
+        return (OBSTACLE_CENTER[0] + SAT_OUTER_DIST * ux,
+                OBSTACLE_CENTER[1] + SAT_OUTER_DIST * uy, FLIGHT_ALT)
     dp = dock_point_of(face_name)
     return (dp[0], dp[1], FLIGHT_ALT)
 

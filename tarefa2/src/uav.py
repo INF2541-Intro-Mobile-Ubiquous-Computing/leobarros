@@ -192,7 +192,7 @@ def make_satellite(face: str, viz: bool = False, swcore: bool = False, pubsub: b
     connect/disconnect/ack behaviour the SwCore core nodes rely on.
     ``pubsub`` adds the contact-only application transport, without core routing.
     """
-    BaseSat = make_satellite_protocol(face, swcore=swcore)
+    BaseSat = make_satellite_protocol(face, swcore=swcore, start_away=pubsub)
     if pubsub:
         if not swcore:
             raise ValueError('Satellite Pub/Sub requires swcore')

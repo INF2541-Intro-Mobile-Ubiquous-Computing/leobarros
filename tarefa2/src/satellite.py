@@ -76,12 +76,14 @@ ST_WAIT_ALIGN  = "WAIT_ALIGN"
 ST_EXCHANGE    = "EXCHANGE"
 
 
-def make_satellite_protocol(face_name: str, swcore: bool = False) -> type:
+def make_satellite_protocol(face_name: str, swcore: bool = False,
+                            start_away: bool = False) -> type:
     """
     Factory returning a SatelliteProtocol class for the given compass face.
 
     face_name must be one of "N", "E", "S", "W".
     Satellites move at UAV_SPEED (shared by all UAVs).
+    start_away=True starts at the outer point, approaching the core first.
 
     swcore=True enables the SwCore satellite behaviour (Algorithm 2): explicit
     connect/disconnect events to the hub and an upload that is kept until the
@@ -108,8 +110,8 @@ def make_satellite_protocol(face_name: str, swcore: bool = False) -> type:
 
         def initialize(self) -> None:
             self.packets: Dict[str, int] = {}
-            self._state = ST_COLLECT_OUT
-            self._current_position = (_dock_2d[0], _dock_2d[1], FLIGHT_ALT)
+            self._state = ST_COLLECT_IN if start_away else ST_COLLECT_OUT
+            self._current_position = _outer_3d if start_away else _dock_3d
 
             # Exchange tracking
             self._ack_node: Optional[int] = None   # rim node that answered ack
@@ -126,8 +128,10 @@ def make_satellite_protocol(face_name: str, swcore: bool = False) -> type:
             # Set speed once
             self.provider.send_mobility_command(SetSpeedMobilityCommand(UAV_SPEED))
 
-            # Start first outbound leg
-            self._goto_outer()
+            if start_away:
+                self._goto_dock()
+            else:
+                self._goto_outer()
 
             # Sensor heartbeat
             self.provider.schedule_timer("sat_heartbeat", self.provider.current_time() + SAT_HEARTBEAT_INTERVAL)
