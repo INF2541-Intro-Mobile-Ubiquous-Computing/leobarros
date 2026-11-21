@@ -52,6 +52,22 @@ def check():
     peers = [n for n in nodes if hasattr(n, 'pspeer_service')]
     satellites = [n for n in nodes if hasattr(n, 'sensor_origin_region')]
     assert len(peers) == 3 and len(satellites) == 4
+    peer_ids = {peer.provider.get_id() for peer in peers}
+    satellite_ids = {sat.provider.get_id() for sat in satellites}
+    for node in nodes:
+        if not getattr(node, 'mesh_routing', False):
+            continue
+        routes = node._mesh_rt
+        nearest = min(peer_ids, key=lambda peer: (len(routes[peer]['path']), peer))
+        assert node.selected_pspeer == nearest, 'Selected peer is not nearest by hops'
+        assert satellite_ids <= node._rt.keys(), 'Satellite missing from RT'
+        for destination, route in routes.items():
+            path = route['path']
+            if route['state'] == 'unreachable':
+                assert not path
+                continue
+            assert path[0] == node.provider.get_id() and path[-1] == destination
+            assert len(path) == len(set(path)), 'Routing path contains a loop'
     histories = []
     subscriptions = []
     for peer in peers:

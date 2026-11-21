@@ -118,6 +118,8 @@ PSPEER_COLOR = (0, 200, 100)        # RGB, distinct from ordinary rim nodes
 PUBSUB_SEED = 2056                 # per-instance Pub/Sub RNGs, separate from movement
 PUBSUB_PUBLICATION_INTERVAL = 5.0   # simulated seconds
 PUBSUB_SUBSCRIPTION_INTERVAL = 5.0  # simulated seconds
+PUBSUB_ROUTE_INTERVAL = 0.25       # ordinary-radio link-state advertisements
+PUBSUB_ROUTE_TIMEOUT = 0.75        # maximum age of a usable advertisement
 
 # ---------------------------------------------------------------------------
 # Routing Protocol Parameters

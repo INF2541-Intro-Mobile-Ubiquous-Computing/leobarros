@@ -122,9 +122,12 @@ The original mobility and sensor seeds remain unchanged. Setting
 
 With `--pubsub`, hub and rim protocols expose `send_pubsub(destination, envelope)`
 and the receive hook `handle_pubsub(envelope, source_id)`. The adapter reuses
-SwCore's radio unicast and beacon-based neighbor discovery: direct neighbor
-first, otherwise the known hub. It supports the star core, including two-hop
-rim-to-rim delivery, with per-instance transport IDs and duplicate suppression.
+SwCore's radio unicast and beacon-based neighbor discovery. In Pub/Sub mode,
+link-state advertisements travel over the ordinary radio every 0.25 s; each
+origin/sequence is forwarded once. Every core node computes shortest paths
+locally, retaining the full path and next hop in `_mesh_rt`. Advertisements
+expire after 0.75 s. Only mutually advertised links are used. Per-instance
+transport IDs suppress duplicates; routes can use rim nodes without a hub.
 `PUBSUB_TRANSPORT_MAX_HOPS` bounds forwarding. Sending to self dispatches locally.
 
 The return value indicates local dispatch or submission to the next hop, not
@@ -132,7 +135,9 @@ confirmed delivery. Without a known next hop it returns `False`. DELIVER for a
 known unavailable satellite is retained in the existing SwCore buffer, with
 separate Pub/Sub entries. Connected satellites use the SwCore route table and
 radio unicast; no periodic retry or transmission acknowledgment is added.
-Existing SwCore satellite traffic keeps its original routing and buffers.
+In Pub/Sub mode the same computed satellite paths also update SwCore `_rt`,
+including versioned disconnects and unreachable entries. Buffers are flushed
+when routes change. Legacy mode retains the original routing.
 
 Core clients select a single simulator node ID with `select_pspeer(node_id)`, then
 call `subscribe_pubsub(topic, accepted_regions)`, `publish_pubsub(publication)`
@@ -140,7 +145,9 @@ and `fetch_pubsub(topic)`. Without a selected peer these calls return `False`.
 The adapter processes requests only at PSPeers. FETCH returns eligible history
 over the same radio transport using DELIVER, including an empty result; clients
 receive it through `on_pubsub_delivery(envelope)`. Successful receipt is recorded
-locally and reported by subsequent FETCH requests. There is no automatic peer discovery.
+locally and reported by subsequent FETCH requests. Peer discovery is automatic:
+the reachable peer with the fewest hops is selected, with ties broken by node ID.
+Changing peer rebinds subscriptions and requests unread history.
 Satellite sensor collections
 generate publications as described below. Request/response logs are
 INFO; per-hop paths are DEBUG. `tests/test_pubsub_adapter.py` exercises this path.
@@ -155,8 +162,8 @@ numeric payload value in [0, 1), with region C, current simulation time and an I
 `core:<node_id>:<sequence>`. Streams reproduce for the same seed and node IDs,
 independently of inter-node event ordering, without using the global RNG.
 
-PSPeers initially publish to themselves; other core nodes receive only the actual
-ID of the first configured PSPeer during scenario construction. No recipient list
+PSPeers select themselves (zero hops); other core nodes discover the closest
+PSPeer through radio advertisements. No recipient list
 is exposed to the publisher. Generation continues after an unsuccessful submission,
 without buffering or retrying that publication. True means first-hop submission,
 not receipt. Outside Pub/Sub mode these timers are absent, and satellites retain
@@ -427,9 +434,10 @@ per-instance counter and remain unchanged while queued.
 
 `SensorPublicationMixin` maintains a queue independent of the original satellite
 packet counter and SwCore upload. On EXCHANGE it submits queued publications via
-the contact node. The scenario gives each satellite only the actual node ID of
-the first peer in `PSPEER_SLOTS`, obtained from the builder; no shared node registry
-or global lookup is used. The selected peer can still be changed through the API.
+the contact node. Its docking response advertises its nearest PSPeer, which the
+satellite selects before resuming subscriptions and publications. The builder
+does not assign a fixed peer; routing does not read a shared node registry.
+This minimizes hops through the chosen contact, not across all potential contacts.
 Without a peer/contact or when sending returns False, entries remain queued for
 the next contact. True removes an entry after submission to the first radio hop,
 not after confirmed receipt: subsequent loss is admitted, without ACK/retry.
@@ -488,3 +496,13 @@ Node colours:
 - Full metrics table added (latency, hops, dock stats)
 - `COMM_RANGE` reduced from 32 to 30 m; `SIMULATION_DURATION` reduced to 300 s
 - Added `--topology {random,star}`; `random` (9 UAVs moving randomly in the obstacle area) is the new default, `star` is the previous formation
+
+### Specification v2 routing validation
+
+`tests/test_mesh_routing.py` checks discovery over real radio, nearest-peer ties,
+three-hop delivery without a hub, alternate paths, route expiration, buffering,
+versioned satellite disconnection and peer selection at docking. The integrated
+auditor also checks full paths and nearest peers for every core node.
+Routing details are DEBUG; peer selection/unavailability uses explanatory INFO.
+Periodic failures and the final INFO metrics report are subsequent stages;
+see `docs/plano-v2.txt`.

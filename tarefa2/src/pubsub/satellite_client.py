@@ -6,11 +6,27 @@ from gradysim.protocol.messages.communication import SendMessageCommand
 from src.pubsub.adapter import PubSubAdapterMixin
 from src.pubsub.transport import PubSubTransportMixin
 from src.pubsub.events import pubsub_event
-from src.satellite import ST_EXCHANGE
+from src.satellite import ST_EXCHANGE, ST_WAIT_ALIGN
 from utils.common.config import PUBSUB_TRANSPORT_MAX_HOPS
 
 
 class PubSubSatelliteMixin(PubSubAdapterMixin, PubSubTransportMixin):
+    def handle_packet(self, message: str) -> None:
+        try:
+            packet = json.loads(message)
+        except json.JSONDecodeError:
+            return super().handle_packet(message)
+        if (isinstance(packet, dict) and packet.get('msg_type') == 'dock_ack'
+                and packet.get('face') == self.sensor_origin_region
+                and self._state == ST_WAIT_ALIGN and self._ack_node is None
+                and 'pspeer_id' in packet):
+            peer = packet['pspeer_id']
+            if peer is not None and (type(peer) is not int or peer < 0):
+                return
+            # Resume only after the handshake has entered EXCHANGE.
+            self.selected_pspeer = peer
+        return super().handle_packet(message)
+
     def _subscription_failure_reason(self) -> str:
         if self.selected_pspeer is None:
             return super()._subscription_failure_reason()

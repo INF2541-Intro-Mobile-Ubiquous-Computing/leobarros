@@ -34,11 +34,11 @@ Faltantes/insuficientes:
 
 ETAPAS E CRITÉRIOS
 
-1. Base revisada e mobilidade [implementada; aguarda revisão/commit].
+1. Base revisada e mobilidade [concluída; continuação autorizada].
    Preservar PDF/texto e este plano; corrigir posição e primeira perna somente
    no cenário Pub/Sub; testes de geometria, estado inicial e construção.
 
-2. Rotas distribuídas [pendente].
+2. Rotas distribuídas [implementada; aguarda revisão/commit].
    Descobrir/anunciar peers e conectividade pelo rádio; cada nó do core deve
    manter caminhos para o PSPeer mais próximo e para cada satélite. Selecionar
    peer por menor número de saltos, desempate determinístico por ID (critério
@@ -63,6 +63,9 @@ ETAPAS E CRITÉRIOS
    Observar sem usar métricas para decidir o protocolo; exportar resultados
    reproduzíveis e executar simulação integrada com falhas, testes e matriz
    requisito -> evidência. Não declarar conformidade total antes disso.
+   Solicitação posterior do usuário: relatório conciso das quatro métricas
+   ao final em INFO. INFO somente alto nível explicativo; detalhes técnicos
+   em DEBUG em todas as etapas.
 
 VALIDAÇÃO
 Baseline anterior às mudanças: 146 testes aprovados (unittest discover).
@@ -73,3 +76,20 @@ histórico e múltiplos ciclos de contato verificados pelo auditor existente.
 Logs locais: verification-v2-stage1.log e verification-v2-stage1-integrated.log.
 Os seis testes funcionais TF01–TF06 são sugestões opcionais no PDF; usar a
 suíte existente e ampliar apenas para os comportamentos novos relevantes.
+
+ETAPA 2 — DECISÕES
+- Anúncios de estado de enlaces por rádio comum a cada 0,25 s, validade 0,75 s;
+  cada origem/sequência retransmitida uma vez. Isso é controle de roteamento,
+  distinto de SYNC/REPLICATE Pub/Sub, que continuam sem retransmissão.
+- BFS local, enlaces recíprocos, menor número de saltos e desempate por ID.
+  _mesh_rt mantém caminhos completos; _rt preserva interface SwCore de
+  satélites e passa a incluir os caminhos. Sem consulta global de topologia.
+- Satélite descobre o peer na resposta de docking do contato escolhido;
+  minimiza saltos através desse contato, sem comparar contatos alternativos.
+- Desconexões versionadas impedem ressuscitar contatos antigos; mudanças de
+  peer preservam IDs recebidos e retomam assinaturas/histórico pelo adapter.
+- Falhas periódicas ainda não implementadas; próxima etapa após revisão.
+- Validação: 153 testes aprovados; auditoria de 300 segundos simulados aprovada,
+  incluindo seleção do peer mais próximo, caminhos sem ciclos, réplicas,
+  filtros, histórico e 14 ciclos completos por satélite.
+  Logs: verification-v2-stage2.log e verification-v2-stage2-integrated.log.

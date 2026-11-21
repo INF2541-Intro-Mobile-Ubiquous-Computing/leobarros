@@ -21,7 +21,7 @@ class CorePublicationMixin:
         self._core_publication_rng = random.Random(f'{PUBSUB_SEED}:core:{node}')
         self._core_publication_sequence = 0
         peer = node if getattr(self, 'is_pspeer', False) else self.initial_core_pspeer_id
-        if peer is not None:
+        if peer is not None and not getattr(self, 'mesh_routing', False):
             self.select_pspeer(peer)
         self.provider.schedule_timer(self.core_publication_timer,
                                      self.provider.current_time() + interval)

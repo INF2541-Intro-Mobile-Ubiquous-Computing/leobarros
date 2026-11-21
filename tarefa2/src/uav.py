@@ -33,6 +33,7 @@ from src.pubsub.satellite_client import PubSubSatelliteMixin
 from src.pubsub.sensor_publications import SensorPublicationMixin
 from src.pubsub.core_publications import CorePublicationMixin
 from src.pubsub.dynamic_subscriptions import DynamicSubscriptionMixin
+from src.pubsub.mesh_routing import MeshRoutingMixin
 from utils.common.config import PSPEER_COLOR
 
 
@@ -49,7 +50,7 @@ def _routing_mixin(name: str, pubsub: bool = False) -> type:
         if name != 'swcore':
             raise ValueError('Pub/Sub transport requires swcore routing')
         class PubSubSWCore(DynamicSubscriptionMixin, CorePublicationMixin, PubSubAdapterMixin,
-                           PubSubTransportMixin, SWCoreMixin):
+                           MeshRoutingMixin, PubSubTransportMixin, SWCoreMixin):
             pass
         return PubSubSWCore
     try:

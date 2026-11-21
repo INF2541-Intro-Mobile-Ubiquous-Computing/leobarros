@@ -167,7 +167,7 @@ class SensorPublicationTests(unittest.TestCase):
         self.assertEqual(node.packets, {})
         self.assertEqual(node._pending_sensor_publications, pending)
 
-    def test_main_supplies_one_actual_peer_id_only_in_pubsub_mode(self):
+    def test_main_leaves_satellite_peer_discovery_to_contact(self):
         for enabled in (False, True):
             argv = ['main', '--no-viz', '--topology', 'star', '--routing-strategy', 'swcore']
             if enabled:
@@ -177,5 +177,4 @@ class SensorPublicationTests(unittest.TestCase):
                   patch.object(main, 'make_satellite', wraps=main.make_satellite) as factory):
                 builder.return_value.add_node.side_effect = range(100, 200)
                 main.main()
-            expected = 100 + len(main.SENSOR_POSITIONS) + 1 + main.PSPEER_SLOTS[0] if enabled else None
-            self.assertEqual([c.kwargs['pspeer_id'] for c in factory.call_args_list], [expected] * 4)
+            self.assertEqual([c.kwargs['pspeer_id'] for c in factory.call_args_list], [None] * 4)

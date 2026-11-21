@@ -1,8 +1,8 @@
 """Core-addressed Pub/Sub transport using SwCore radio and neighbor discovery.
 
-The supported topology is star: send to a known neighbor or through the known
-hub. No global node registry, extra discovery flood, ACK or retry is used.
-Satellites use SwCore's existing route table and isolated entries in its buffer.
+The production core uses MeshRoutingMixin's locally computed paths. Standalone
+legacy transport retains neighbor/hub forwarding. No global registry or receipt
+ACK is used. SwCore's buffer holds isolated Pub/Sub entries until a route returns.
 """
 import json
 import logging
@@ -93,7 +93,17 @@ class PubSubTransportMixin:
         neighbors = self.fresh_neighbors()
         destination = packet['destination']
         route = self._rt.get(destination)
-        if route is not None:
+        if getattr(self, 'mesh_routing', False):
+            route = self._mesh_rt.get(destination)
+            if (route is None or route['state'] == 'unreachable'
+                    or route['next_hop'] == packet.get('sender_id')):
+                self._queue_pubsub(packet)
+                return False
+            next_hop = route['next_hop']
+            if route['state'] != 'direct' and next_hop not in neighbors:
+                self._queue_pubsub(packet)
+                return False
+        elif route is not None:
             if route['state'] == 'direct':
                 next_hop = destination
             elif (route['state'] == 'hop' and route['next_hop'] in neighbors

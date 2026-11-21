@@ -111,11 +111,14 @@ class CoreDockMixin:
             dp = dock_point_of(face)
             if self._aligned_with(dp):
                 # Reply with unicast dock_ack
-                ack = json.dumps({
+                ack_fields = {
                     "msg_type": MSG_DOCK_ACK,
                     "face": face,
                     "sender_id": self.provider.get_id(),
-                })
+                }
+                if getattr(self, 'mesh_routing', False):
+                    ack_fields['pspeer_id'] = self.selected_pspeer
+                ack = json.dumps(ack_fields)
                 self.provider.send_communication_command(
                     SendMessageCommand(ack, sat_id)
                 )
